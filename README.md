@@ -1,6 +1,17 @@
-# Corum Ranked Official Site
+# Corum Ranked Official Site v1.1.0
 
-Corum Ranked의 현재 맵 풀과 티어별 풀 구성을 보여주는 공식 사이트 소스입니다.
+Corum Ranked의 맵 풀, 공개 플레이어 순위와 운영 규칙을 보여주는 공식 사이트입니다.
+
+## 이번 버전
+
+- `맵 리스트`: sheet2의 맵 제목, 난이도, 맵 코드, Ranked Pool, Qualifying %
+- `순위`: 플레이어 이름, 티어/LP, 승급전·배치 상태, 승/무/패, 승률
+- `정보`: 티어별 LP 커트, 승급전 판수/필요 승수, 승급·강등 규칙, 풀 구성
+- 다크 모드 유지
+- 모드 다운로드 버튼 비활성화 유지
+- GitHub Pages 배포 workflow 포함
+
+사이트는 Hidden MMR을 요청하거나 표시하지 않습니다.
 
 ## 실행
 
@@ -9,22 +20,30 @@ npm install
 npm run dev
 ```
 
-## 빌드
+## GitHub Pages 배포
 
-```bash
-npm run build
+1. 이 압축 파일의 내용을 저장소 최상위에 넣고 `main` 브랜치에 push합니다.
+2. GitHub 저장소의 `Settings → Pages → Source`를 `GitHub Actions`로 설정합니다.
+3. 포함된 `.github/workflows/deploy.yml`이 `dist`를 자동 배포합니다.
+
+## Ranked 서버 연결
+
+기본 서버는 `https://corum-ranked.onrender.com`입니다. 다른 서버를 사용하면 저장소의
+GitHub Actions Variable에 아래 값을 설정합니다.
+
+```text
+VITE_RANKED_API_URL=https://your-ranked-server.example
 ```
 
-빌드 결과는 `dist` 폴더에 생성됩니다. `vite.config.js`의 `base`가 상대 경로로 설정되어 있어 GitHub Pages와 일반 정적 호스팅에 사용할 수 있습니다.
+로컬에서는 `.env`에 같은 값을 넣으면 됩니다.
 
-## 데이터
+순위 탭은 공개 읽기 전용 `GET /api/ranked/leaderboard`를 사용합니다. 함께 제공된 서버
+패치를 Corum-Ranked 서버에 반영하고, 서버의 `CORS_ORIGINS`에 GitHub Pages origin인
+`https://ybaf100.github.io`를 등록해야 합니다. DB 접속 문자열을 프런트엔드에 넣지 마세요.
 
-Google Sheets의 `sheet2` CSV에서 다음 열만 읽습니다.
+## 데이터 원본
 
-- 맵 제목
-- Rating
-- 대체 맵 코드
-- Ranked Pool (1~6)
-- Qualifying %
-
-사이트에서는 `대체 맵 코드`가 `맵 코드`로 표시됩니다. `Ranked Pool (1~6)` 값이 비어 있는 맵은 목록에 표시되지 않습니다.
+- sheet2: 맵 목록
+- Ranked Tiers: 티어 커트, 메인/데스매치 풀, 승급전 판수와 필요 승수
+- Ranked Config: 배치 판수와 승급·강등 LP 보정값
+- Ranked DB 공개 API: 플레이어 공개 상태와 전적

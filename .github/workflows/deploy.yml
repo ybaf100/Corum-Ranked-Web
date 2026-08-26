@@ -38,6 +38,8 @@ jobs:
 
       - name: Build website
         run: npm run build
+        env:
+          VITE_RANKED_API_URL: ${{ vars.VITE_RANKED_API_URL }}
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
