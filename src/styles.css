@@ -100,6 +100,7 @@ svg { width: 1em; height: 1em; display: block; }
   box-shadow: 0 16px 44px rgba(0, 0, 0, 0.13);
   pointer-events: auto;
 }
+.brand-cluster { display: flex; align-items: center; gap: 10px; flex: none; }
 .brand {
   min-height: 44px;
   padding: 0 15px;
@@ -117,6 +118,22 @@ svg { width: 1em; height: 1em; display: block; }
 .brand span { font-weight: 650; }
 .brand strong { font-weight: 900; }
 :root[data-theme="dark"] .brand { background: linear-gradient(180deg, #1a1d2c, #10121c); color: var(--ink); }
+.server-status {
+  min-height: 34px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.server-status i { width: 7px; height: 7px; border-radius: 50%; background: #ff5b5b; box-shadow: 0 0 0 4px rgba(255, 91, 91, 0.11); }
+.server-status span { font-size: 10px; font-weight: 900; letter-spacing: -0.01em; }
+.server-status.is-open { color: var(--ink); }
+.server-status.is-open i { background: #2fd67b; box-shadow: 0 0 0 4px rgba(47, 214, 123, 0.12), 0 0 12px rgba(47, 214, 123, 0.35); }
 
 .header-actions { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .site-tabs {
@@ -312,13 +329,13 @@ tbody tr:hover { background: var(--panel-raised); }
 .ranking-skeleton { pointer-events: none; }
 .ranking-skeleton i { display: block; width: 65%; height: 24px; border-radius: 9px; background: linear-gradient(90deg, var(--panel-hover), var(--panel-raised), var(--panel-hover)); background-size: 220% 100%; animation: shimmer 1.5s linear infinite; }
 .ranking-skeleton i:first-child { width: 35px; }
-
-.rule-summary-grid { margin-bottom: 18px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
-.rule-summary-card { min-height: 154px; padding: 20px; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 19px; background: var(--panel); box-shadow: 0 9px 30px rgba(0, 0, 0, 0.04); }
-.rule-summary-card span { color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: 0.12em; }
-.rule-summary-card strong { margin-top: auto; font-size: 34px; line-height: 1; font-weight: 900; }
-.rule-summary-card p { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
-.danger-card strong { color: #ff5656; }
+.unranked-section { margin-top: 42px; padding-top: 28px; border-top: 1px solid var(--line-strong); }
+.unranked-heading { margin: 0 3px 14px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.unranked-heading .section-kicker { margin-bottom: 5px; }
+.unranked-heading h2 { margin: 0; font-size: 30px; letter-spacing: -0.04em; }
+.unranked-heading > span { color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: 0.12em; }
+.unranked-list .ranking-row { background: color-mix(in srgb, var(--panel) 84%, var(--panel-hover)); }
+.unranked-list .rank-number { color: var(--soft) !important; }
 .info-section-shell { margin-bottom: 18px; overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: var(--panel); box-shadow: var(--shadow-soft); }
 .tier-rule-table { min-width: 800px; }
 .tier-rule-table td:nth-child(2) strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
@@ -354,7 +371,6 @@ tbody tr:hover { background: var(--panel-raised); }
   .ranking-row { grid-template-columns: 48px minmax(0, 1fr); gap: 12px; }
   .rank-number { grid-row: 1 / span 3; align-self: start; padding-top: 2px; }
   .player-status, .record-line { grid-column: 2; justify-content: flex-start; }
-  .rule-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 640px) {
@@ -362,6 +378,9 @@ tbody tr:hover { background: var(--panel-raised); }
   .site-header { gap: 8px; padding: 8px; border-radius: 16px; }
   .brand { min-height: 40px; padding: 0 11px; }
   .brand span, .brand strong { font-size: 12px; }
+  .brand-cluster { gap: 6px; }
+  .server-status { min-height: 30px; padding: 0 9px; }
+  .server-status span { font-size: 9px; }
   .header-actions { gap: 6px; }
   .header-button { min-height: 40px; padding-inline: 10px; }
   .header-button span { display: none; }
@@ -390,9 +409,6 @@ tbody tr:hover { background: var(--panel-raised); }
   .player-status { flex-wrap: wrap; }
   .record-line { flex-wrap: wrap; gap: 9px; white-space: normal; }
   .record-line b { min-width: 0; text-align: left; }
-  .rule-summary-grid { grid-template-columns: 1fr 1fr; }
-  .rule-summary-card { min-height: 132px; padding: 16px; }
-  .rule-summary-card strong { font-size: 29px; }
   .demotion-panel { grid-template-columns: 1fr; gap: 15px; padding: 20px; }
   .footer { width: calc(100% - 24px); }
 }
