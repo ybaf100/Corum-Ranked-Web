@@ -150,7 +150,9 @@ function normalizeLeaderboard(payload) {
       tier,
       visibleRankedScore: value.visibleRankedScore === null ? null : Number(value.visibleRankedScore),
       placementGames: Math.max(0, Number(value.placementGames) || 0),
-      placementGamesRequired: Math.max(0, Number(value.placementGamesRequired) || 0),
+      placementGamesRequired: value.placementGamesRequired == null
+        ? null
+        : Math.max(0, Number(value.placementGamesRequired) || 0),
       placementResults: normalizeMarks(value.placementResults),
       promotion,
       demotionWarning: Boolean(value.demotionWarning),
@@ -288,8 +290,10 @@ function MapList({ maps, loading, error, reload }) {
 }
 
 function formatMarks(results, required) {
-  const marks = results.slice(0, required).map((result) => result === "WIN" ? "O" : "X");
-  return `${marks.join("")}${"-".repeat(Math.max(0, required - marks.length))}`;
+  const knownRequired = Number.isFinite(required) && required > 0;
+  const length = knownRequired ? required : results.length;
+  const marks = results.slice(0, length).map((result) => result === "WIN" ? "O" : "X");
+  return `${marks.join("")}${"-".repeat(Math.max(0, length - marks.length))}` || "—";
 }
 
 function formatWinRate(player) {
@@ -315,7 +319,7 @@ function RankingRows({ players, rankedPlayers, unranked = false }) {
 }
 
 function PlayerStatus({ player }) {
-  if (player.tier === "UNRANKED" || player.visibleRankedScore === null) return <div className="player-status"><TierBadge tier="UNRANKED" /><strong className="series-marks">{formatMarks(player.placementResults, player.placementGamesRequired)}</strong><small>배치 {player.placementGames}/{player.placementGamesRequired}</small></div>;
+  if (player.tier === "UNRANKED" || player.visibleRankedScore === null) return <div className="player-status"><TierBadge tier="UNRANKED" /><strong className="series-marks">{formatMarks(player.placementResults, player.placementGamesRequired)}</strong><small>배치 {player.placementGames}/{player.placementGamesRequired ?? "?"}</small></div>;
   if (player.promotion) return <div className="player-status"><TierBadge tier={player.promotion.sourceTier} /><strong className="series-marks">{formatMarks(player.promotion.results, player.promotion.gamesRequired)}</strong><small>{player.promotion.targetTier} 승급전 · {player.promotion.winsRequired}승 필요</small></div>;
   return <div className="player-status"><TierBadge tier={player.tier} /><strong className="lp-value">{Number.isFinite(player.visibleRankedScore) ? player.visibleRankedScore.toLocaleString() : "—"} LP</strong>{player.demotionWarning && <small className="warning-label">강등 경고</small>}</div>;
 }
