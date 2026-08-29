@@ -39,6 +39,29 @@ const TIER_POOL_DISTRIBUTION = [
   { tier: "GOLD", counts: [0, 0, 0, 1, 2, 2] },
 ];
 
+const MATCH_FLOW = [
+  { step: "01", eyebrow: "MATCH FOUND", title: "매칭 · 밴", description: "티어에 맞춰 구성된 5개 후보 맵을 확인하고 10초 밴 페이즈를 진행합니다." },
+  { step: "02", eyebrow: "OPENING", title: "Round 1", description: "첫 번째 맵에서 일반 라운드를 진행합니다. 종료 후에는 항상 Round 2로 이동합니다." },
+  { step: "03", eyebrow: "MATCH POINT", title: "Round 2", description: "두 라운드의 승수가 다르면 매치가 끝나고, 같으면 마지막 Round 3으로 이동합니다." },
+  { step: "04", eyebrow: "TIEBREAKER", title: "Round 3", description: "결정 라운드입니다. 승패가 나면 매치가 끝나고 라운드 무승부면 Death Match로 이동합니다." },
+  { step: "05", eyebrow: "IF TIED", title: "Death Match", description: "각자 3번의 Attempt 점수를 합산합니다. 동점이면 새 맵으로 Death Match를 반복합니다." },
+];
+
+const ROUND_RULES = [
+  { value: "5:00", label: "MAIN TIME", title: "일반 라운드", description: "5분 동안 자유롭게 Attempt를 시작하고 점수와 Clear를 쌓습니다." },
+  { value: "+0:10", label: "FINAL ATTEMPT", title: "마지막 시작 구간", description: "5분 종료 후 10초 동안 새 Attempt를 시작할 수 있습니다. 제한 전에 시작한 Attempt는 자연 종료까지 인정됩니다." },
+  { value: "3", label: "CLEAR TARGET", title: "3-Clear", description: "한쪽이 먼저 3 Clears에 도달하면 상대에게 별도의 LAST ATTEMPT가 열립니다." },
+  { value: "10s", label: "LAST ATTEMPT", title: "동점 기회", description: "상대는 10초 동안 필요한 Attempt를 시작해 3 Clears를 맞춥니다. 성공하면 라운드 무승부, 실패하면 먼저 3 Clears를 만든 플레이어가 승리합니다." },
+];
+
+const SCORE_RULES = [
+  { range: "< Qualifying", score: "0점", detail: "기준 미달" },
+  { range: "Qualifying–<50%", score: "진행률", detail: "소수점 버림" },
+  { range: "50–<75%", score: "× 1.5", detail: "버림 진행률 기준" },
+  { range: "75–<100%", score: "× 2", detail: "버림 진행률 기준" },
+  { range: "100%", score: "250점", detail: "+ 1 Clear" },
+];
+
 function Icon({ name }) {
   const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
   if (name === "sun") return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5" {...common} /><path d="M12 2.5v2M12 19.5v2M4.5 12h-2M21.5 12h-2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4" {...common} /></svg>;
@@ -341,11 +364,27 @@ function Ranking({ players, loading, error, reload }) {
   </section>;
 }
 
+function MatchProgression() {
+  return <section className="match-format-section" aria-labelledby="match-format-title">
+    <div className="composition-title-line match-format-title"><div><p className="section-kicker">HOW RANKED WORKS</p><h2 id="match-format-title">진행 방식</h2></div><span>BEST OF 3</span></div>
+    <ol className="match-flow-grid">{MATCH_FLOW.map((phase, index) => <li className={`match-flow-step${index === MATCH_FLOW.length - 1 ? " conditional-step" : ""}`} key={phase.step}>
+      <div className="flow-marker"><span>{phase.step}</span><i aria-hidden="true" /></div>
+      <p>{phase.eyebrow}</p><h3>{phase.title}</h3><small>{phase.description}</small>
+    </li>)}</ol>
+    <div className="round-rule-grid">{ROUND_RULES.map((rule) => <article className="round-rule-card" key={rule.label}>
+      <div><strong>{rule.value}</strong><span>{rule.label}</span></div><h3>{rule.title}</h3><p>{rule.description}</p>
+    </article>)}</div>
+    <div className="score-rule-shell"><div className="score-rule-heading"><div><p className="section-kicker">ROUND SCORING</p><h3>Attempt 점수</h3></div><p>모든 점수 구간은 먼저 맵별 Qualifying 기준을 통과해야 적용됩니다.</p></div><div className="score-rule-grid">{SCORE_RULES.map((rule) => <div className="score-rule" key={rule.range}><span>{rule.range}</span><strong>{rule.score}</strong><small>{rule.detail}</small></div>)}</div></div>
+    <div className="authority-note"><span>SERVER AUTHORITATIVE</span><p>시간, Attempt 승인, 점수, Clear, 라운드와 최종 승자는 Ranked 서버가 판정합니다. 최종 매치 무승부는 없으며 승자가 나올 때까지 Death Match가 반복됩니다.</p></div>
+  </section>;
+}
+
 function Information({ maps, mapsLoading, tiers, config, loading, error, reload }) {
   const poolCounts = useMemo(() => POOLS.map((pool) => maps.filter((map) => map.pool === pool).length), [maps]);
   const demotionPenalty = Number(config.demotionScorePenalty) || 0;
   return <section className="tab-page">
-    <div className="page-heading composition-heading"><div><p className="section-kicker">RANKED RULES / LIVE CONFIG</p><h1>Ranked Info</h1><p>현재 운영 시트의 티어 커트, 승급전 설정과 풀 구성, 승급·강등 규칙입니다.</p></div><button className="reload-button" type="button" onClick={reload} disabled={loading}><Icon name="refresh" />정보 새로고침</button></div>
+    <div className="page-heading composition-heading"><div><p className="section-kicker">RANKED RULES / LIVE CONFIG</p><h1>Ranked Info</h1><p>Ranked 경기 진행 방식과 현재 운영 시트의 티어 커트, 승급·강등 규칙, 맵 풀 구성을 확인합니다.</p></div><button className="reload-button" type="button" onClick={reload} disabled={loading}><Icon name="refresh" />정보 새로고침</button></div>
+    <MatchProgression />
     {error ? <StateCard type="error" title="운영 정보를 불러오지 못했습니다." description={error} action={<button className="primary-button" onClick={reload}>다시 시도</button>} /> : <>
       <div className="info-section-shell"><div className="composition-title-line"><div><p className="section-kicker">TIER BANDS</p><h2>티어 커트 · 승급전</h2></div><span>운영 시트 실시간</span></div><div className="table-scroll"><table className="tier-rule-table"><thead><tr><th>티어</th><th>LP 구간</th><th>승급</th><th>메인 풀</th><th>데스매치 풀</th></tr></thead><tbody>{loading ? <tr><td colSpan="5">불러오는 중…</td></tr> : tiers.map((tier, index) => {
         const target = tiers[index + 1]?.tier;

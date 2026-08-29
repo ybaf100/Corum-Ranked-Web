@@ -1,4 +1,4 @@
-# Corum Ranked Official Site v1.2.1
+# Corum Ranked Official Site v1.3.0
 
 Corum Ranked의 맵 풀, 공개 플레이어 순위와 운영 규칙을 보여주는 공식 사이트입니다.
 
@@ -10,6 +10,8 @@ Corum Ranked의 맵 풀, 공개 플레이어 순위와 운영 규칙을 보여�
 - Ranked 매칭이 꺼져 있어도 DB가 연결되어 있으면 순위와 플레이어 상태 표시
 - Unranked는 Ranked 아래에 별도 분류
 - `정보`: 티어별 LP 커트, 승급전 판수/필요 승수, 승급·강등 규칙, 풀 구성
+- 정보 탭에 Bo3 경기 흐름, 5분 라운드, Final/LAST Attempt, 3-Clear,
+  Death Match와 Attempt 점수를 설명하는 `진행 방식` 섹션 추가
 - 정보 탭의 Placement/승급 성공/승급 실패/강등 요약 카드 제거
 - 다크 모드 유지
 - 모드 다운로드 버튼 비활성화 유지
