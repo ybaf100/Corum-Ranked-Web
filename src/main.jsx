@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
+import "./placement.css";
 
 const SHEET_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRzHKOAa1pnP8TCB3d22TZwM5G3BgQSZhiFloApWA6mMptX6PdU_q6bKj8fs9IhpujO9WZ8Cln7e6vW/pub";
 const SHEET2_CSV_URL = `${SHEET_BASE}?gid=1963044442&single=true&output=csv`;
@@ -20,46 +21,43 @@ const DIFFICULTY_ORDER = [
 ];
 
 const DIFFICULTY_COLORS = {
-  0: "#e8eaed", Tiny: "#ff6fff", 1: "#0099ff", 2: "#00bbff",
-  3: "#00ddff", 4: "#00ffff", 5: "#00ffaa", 6: "#00ff00",
-  7: "#66ff00", 8: "#99ff00", 9: "#ccff00", 10: "#ffff00",
-  11: "#ffdd00", 12: "#ffcc00", 13: "#ffaa00", 14: "#ff8800",
-  15: "#ff6600", 16: "#ff4400", 17: "#ff0000", 18: "#cc0000",
-  "18+": "#a61c00", 19: "#660000", "19+": "#460c00", "20.0": "#360900",
-  20.1: "#240600", 20.2: "#130400", 20.3: "#000000", 20.4: "#0a031f",
-  20.5: "#11072d", 20.6: "#180b3b", 20.7: "#180b3b", 20.8: "#261358",
-  20.9: "#2d1766", 21: "#351c75", "21+": "#4511c9",
+  0: "#e8eaed", Tiny: "#ff6fff", 1: "#0099ff", 2: "#00bbff", 3: "#00ddff", 4: "#00ffff",
+  5: "#00ffaa", 6: "#00ff00", 7: "#66ff00", 8: "#99ff00", 9: "#ccff00", 10: "#ffff00",
+  11: "#ffdd00", 12: "#ffcc00", 13: "#ffaa00", 14: "#ff8800", 15: "#ff6600", 16: "#ff4400",
+  17: "#ff0000", 18: "#cc0000", "18+": "#a61c00", 19: "#660000", "19+": "#460c00", "20.0": "#360900",
+  20.1: "#240600", 20.2: "#130400", 20.3: "#000000", 20.4: "#0a031f", 20.5: "#11072d", 20.6: "#180b3b",
+  20.7: "#180b3b", 20.8: "#261358", 20.9: "#2d1766", 21: "#351c75", "21+": "#4511c9",
 };
 
-const TIER_POOL_DISTRIBUTION = [
-  { tier: "RED", counts: [1, 3, 1, 0, 0, 0] },
-  { tier: "AQUA", counts: [0, 1, 3, 1, 0, 0] },
-  { tier: "BRONZE", counts: [0, 0, 1, 3, 1, 0] },
-  { tier: "SILVER", counts: [0, 0, 0, 1, 3, 1] },
-  { tier: "GOLD", counts: [0, 0, 0, 1, 2, 2] },
-];
-
 const MATCH_FLOW = [
-  { step: "01", eyebrow: "MATCH FOUND", title: "매칭 · 밴", description: "티어에 맞춰 구성된 5개 후보 맵을 확인하고 10초 밴 페이즈를 진행합니다." },
-  { step: "02", eyebrow: "OPENING", title: "Round 1", description: "첫 번째 맵에서 일반 라운드를 진행합니다. 종료 후에는 항상 Round 2로 이동합니다." },
-  { step: "03", eyebrow: "MATCH POINT", title: "Round 2", description: "두 라운드의 승수가 다르면 매치가 끝나고, 같으면 마지막 Round 3으로 이동합니다." },
-  { step: "04", eyebrow: "TIEBREAKER", title: "Round 3", description: "결정 라운드입니다. 승패가 나면 매치가 끝나고 라운드 무승부면 Death Match로 이동합니다." },
-  { step: "05", eyebrow: "IF TIED", title: "Death Match", description: "각자 3번의 Attempt 점수를 합산합니다. 동점이면 새 맵으로 Death Match를 반복합니다." },
+  { step: "01", eyebrow: "MATCH FOUND", title: "매칭 · 밴", description: "두 플레이어의 Hidden MMR 평균으로 effective tier와 맵 후보를 정하고 10초 밴 페이즈를 진행합니다." },
+  { step: "02", eyebrow: "OPENING", title: "Round 1", description: "첫 번째 맵에서 일반 라운드를 진행합니다. 결과와 관계없이 Round 2로 이동합니다." },
+  { step: "03", eyebrow: "MATCH POINT", title: "Round 2", description: "두 라운드 후 승수가 다르면 매치가 끝나고, 같으면 Round 3으로 이동합니다." },
+  { step: "04", eyebrow: "TIEBREAKER", title: "Round 3", description: "비무승부면 최종 승자가 정해지고, 라운드 무승부면 Death Match로 이동합니다." },
+  { step: "05", eyebrow: "IF TIED", title: "Death Match", description: "각자 정확히 3 Attempts의 합산 점수를 비교합니다. 동점이면 새 맵으로 반복합니다." },
 ];
 
 const ROUND_RULES = [
-  { value: "5:00", label: "MAIN TIME", title: "일반 라운드", description: "5분 동안 자유롭게 Attempt를 시작하고 점수와 Clear를 쌓습니다." },
-  { value: "+0:10", label: "FINAL ATTEMPT", title: "마지막 시작 구간", description: "5분 종료 후 10초 동안 새 Attempt를 시작할 수 있습니다. 제한 전에 시작한 Attempt는 자연 종료까지 인정됩니다." },
-  { value: "3", label: "CLEAR TARGET", title: "3-Clear", description: "한쪽이 먼저 3 Clears에 도달하면 상대에게 별도의 LAST ATTEMPT가 열립니다." },
-  { value: "10s", label: "LAST ATTEMPT", title: "동점 기회", description: "상대는 10초 동안 필요한 Attempt를 시작해 3 Clears를 맞춥니다. 성공하면 라운드 무승부, 실패하면 먼저 3 Clears를 만든 플레이어가 승리합니다." },
+  { value: "5:00", label: "MAIN TIME", title: "일반 라운드", description: "5분 동안 새 Attempt를 시작할 수 있습니다." },
+  { value: "+0:10", label: "FINAL ATTEMPT", title: "마지막 시작 구간", description: "5분 뒤 10초 동안 추가 Attempt 시작이 가능합니다. 이미 시작된 Attempt는 자연 종료까지 정산됩니다." },
+  { value: "3", label: "CLEAR TARGET", title: "3-Clear", description: "한쪽이 3 Clears에 도달하면 상대에게 별도 LAST ATTEMPT 창이 열립니다." },
+  { value: "10s", label: "LAST ATTEMPT", title: "동점 기회", description: "상대가 10초 안에 필요한 Attempt를 시작해 3 Clears를 맞추면 라운드 무승부, 실패하면 trigger side가 승리합니다." },
 ];
 
 const SCORE_RULES = [
   { range: "< Qualifying", score: "0점", detail: "기준 미달" },
-  { range: "Qualifying–<50%", score: "진행률", detail: "소수점 버림" },
-  { range: "50–<75%", score: "× 1.5", detail: "버림 진행률 기준" },
-  { range: "75–<100%", score: "× 2", detail: "버림 진행률 기준" },
+  { range: "Qualifying–<50%", score: "진행률", detail: "floor(progress)" },
+  { range: "50–<75%", score: "× 1.5", detail: "floor(progress) 기준" },
+  { range: "75–<100%", score: "× 2", detail: "floor(progress) 기준" },
   { range: "100%", score: "250점", detail: "+ 1 Clear" },
+];
+
+const PLACEMENT_GRADES = [
+  { grade: "S", range: "425–500", movement: "+1", detail: "두 맵 모두 S면 +2" },
+  { grade: "A", range: "350–<425", movement: "+1", detail: "다음 Stage Pool 상승" },
+  { grade: "B", range: "250–<350", movement: "0", detail: "Pool 유지" },
+  { grade: "C", range: "150–<250", movement: "−1", detail: "다음 Stage Pool 하락" },
+  { grade: "D", range: "0–<150", movement: "−1", detail: "두 맵 모두 D면 −2" },
 ];
 
 function Icon({ name }) {
@@ -71,350 +69,140 @@ function Icon({ name }) {
   if (name === "info") return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" {...common} /><path d="M12 11v6M12 7h.01" {...common} /></svg>;
   if (name === "rank") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0V4ZM8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 12v5M8 21h8M9 17h6" {...common} /></svg>;
   if (name === "list") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" {...common} /></svg>;
+  if (name === "arrow") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5" {...common} /></svg>;
+  if (name === "back") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M10 7l-5 5 5 5" {...common} /></svg>;
   return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" {...common} /><path d="m16 16 4 4" {...common} /></svg>;
 }
 
-function normalizeHeader(value) {
-  return String(value || "").replace(/^\uFEFF/, "").replace(/\s+/g, " ").trim();
-}
-
+function normalizeHeader(value) { return String(value || "").replace(/^\uFEFF/, "").replace(/\s+/g, " ").trim(); }
 function parseCsv(text) {
-  const rows = [];
-  let row = [];
-  let cell = "";
-  let quoted = false;
-  for (let index = 0; index < text.length; index += 1) {
-    const character = text[index];
-    const next = text[index + 1];
-    if (character === '"' && quoted && next === '"') { cell += '"'; index += 1; }
-    else if (character === '"') quoted = !quoted;
-    else if (character === "," && !quoted) { row.push(cell); cell = ""; }
-    else if ((character === "\n" || character === "\r") && !quoted) {
-      if (character === "\r" && next === "\n") index += 1;
-      row.push(cell);
-      if (row.some((value) => value.trim())) rows.push(row);
-      row = [];
-      cell = "";
-    } else cell += character;
+  const rows = []; let row = []; let cell = ""; let quoted = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i]; const next = text[i + 1];
+    if (c === '"' && quoted && next === '"') { cell += '"'; i += 1; }
+    else if (c === '"') quoted = !quoted;
+    else if (c === "," && !quoted) { row.push(cell); cell = ""; }
+    else if ((c === "\n" || c === "\r") && !quoted) {
+      if (c === "\r" && next === "\n") i += 1;
+      row.push(cell); if (row.some((v) => v.trim())) rows.push(row); row = []; cell = "";
+    } else cell += c;
   }
-  row.push(cell);
-  if (row.some((value) => value.trim())) rows.push(row);
-  return rows;
+  row.push(cell); if (row.some((v) => v.trim())) rows.push(row); return rows;
 }
-
 function csvObjects(text) {
-  const rows = parseCsv(text);
-  if (rows.length < 2) return [];
+  const rows = parseCsv(text); if (rows.length < 2) return [];
   const headers = rows[0].map(normalizeHeader);
   return rows.slice(1).map((values) => Object.fromEntries(headers.map((header, index) => [header, String(values[index] || "").trim()])));
 }
-
 function parseRankedMaps(csv) {
   return csvObjects(csv).flatMap((row) => {
-    const title = row["맵 제목"];
-    const difficulty = row.Rating;
-    const mapCode = row["대체 맵 코드"];
-    const poolValue = Number(row["Ranked Pool (1~6)"]);
-    const pool = Number.isInteger(poolValue) && poolValue >= 1 && poolValue <= 6 ? poolValue : null;
+    const title = row["맵 제목"]; const difficulty = row.Rating; const mapCode = row["대체 맵 코드"];
+    const poolValue = Number(row["Ranked Pool (1~6)"]); const pool = Number.isInteger(poolValue) && poolValue >= 1 && poolValue <= 6 ? poolValue : null;
     const qualifyingPercent = String(row["Qualifying %"] || "").replace(/%$/, "");
-    if (!title || !difficulty || !mapCode) return [];
-    return [{ title, difficulty, mapCode, pool, qualifyingPercent }];
+    return title && difficulty && mapCode ? [{ title, difficulty, mapCode, pool, qualifyingPercent }] : [];
   });
 }
-
 function parseTierRules(csv) {
   return csvObjects(csv).flatMap((row) => {
-    const tier = String(row.Tier || "").toUpperCase();
-    const minimum = Number(row["최소 점수(포함)"]);
-    const maximumText = row["최대 점수(미포함)"];
+    const tier = String(row.Tier || "").toUpperCase(); const minimum = Number(row["최소 점수(포함)"]); const maximumText = row["최대 점수(미포함)"];
     if (!TIER_ORDER.includes(tier) || tier === "UNRANKED" || !Number.isFinite(minimum)) return [];
-    return [{
-      tier,
-      minimum,
-      maximum: maximumText === "" ? null : Number(maximumText),
-      mainPool: Number(row["Main Pool"]),
-      deathmatchPool: Number(row["Deathmatch Pool"]),
-      promotionGames: Number(row["Promotion Games"]),
-      promotionWinsRequired: Number(row["Promotion Wins Required"]),
-    }];
-  }).sort((left, right) => left.minimum - right.minimum);
+    return [{ tier, minimum, maximum: maximumText === "" ? null : Number(maximumText), mainPool: Number(row["Main Pool"]), deathmatchPool: Number(row["Deathmatch Pool"]), promotionGames: Number(row["Promotion Games"]), promotionWinsRequired: Number(row["Promotion Wins Required"]) }];
+  }).sort((a, b) => a.minimum - b.minimum);
 }
-
 function parseRankedConfig(csv) {
   const config = {};
-  csvObjects(csv).forEach((row) => {
-    const key = row.Key || row.key || Object.values(row)[0];
-    const rawValue = row.Value ?? row.value ?? Object.values(row)[1];
-    if (key) config[key] = rawValue !== "" && Number.isFinite(Number(rawValue)) ? Number(rawValue) : rawValue;
-  });
+  csvObjects(csv).forEach((row) => { const key = row.Key || row.key || Object.values(row)[0]; const raw = row.Value ?? row.value ?? Object.values(row)[1]; if (key) config[key] = raw !== "" && Number.isFinite(Number(raw)) ? Number(raw) : raw; });
   return config;
 }
-
-function normalizeMarks(value) {
-  if (!Array.isArray(value)) return [];
-  return value.filter((mark) => mark === "WIN" || mark === "LOSS");
-}
-
+function normalizeMarks(value) { return Array.isArray(value) ? value.filter((mark) => mark === "WIN" || mark === "LOSS") : []; }
 function normalizeLeaderboard(payload) {
-  const source = Array.isArray(payload?.players) ? payload.players : [];
-  const players = source.flatMap((value) => {
-    const player = String(value?.player || "").trim();
-    const tier = String(value?.tier || "UNRANKED").toUpperCase();
-    if (!player || !TIER_ORDER.includes(tier)) return [];
-    const promotion = value.promotion && typeof value.promotion === "object" ? {
-      sourceTier: String(value.promotion.sourceTier || tier).toUpperCase(),
-      targetTier: String(value.promotion.targetTier || "").toUpperCase(),
-      gamesRequired: Math.max(0, Number(value.promotion.gamesRequired) || 0),
-      winsRequired: Math.max(0, Number(value.promotion.winsRequired) || 0),
-      results: normalizeMarks(value.promotion.results),
-    } : null;
-    return [{
-      player,
-      tier,
-      visibleRankedScore: value.visibleRankedScore === null ? null : Number(value.visibleRankedScore),
-      placementGames: Math.max(0, Number(value.placementGames) || 0),
-      placementGamesRequired: value.placementGamesRequired == null
-        ? null
-        : Math.max(0, Number(value.placementGamesRequired) || 0),
-      placementResults: normalizeMarks(value.placementResults),
-      promotion,
-      demotionWarning: Boolean(value.demotionWarning),
-      wins: Math.max(0, Number(value.wins) || 0),
-      losses: Math.max(0, Number(value.losses) || 0),
-    }];
+  const players = (Array.isArray(payload?.players) ? payload.players : []).flatMap((value) => {
+    const player = String(value?.player || "").trim(); const tier = String(value?.tier || "UNRANKED").toUpperCase(); if (!player || !TIER_ORDER.includes(tier)) return [];
+    const promotion = value.promotion && typeof value.promotion === "object" ? { sourceTier: String(value.promotion.sourceTier || tier).toUpperCase(), targetTier: String(value.promotion.targetTier || "").toUpperCase(), gamesRequired: Math.max(0, Number(value.promotion.gamesRequired) || 0), winsRequired: Math.max(0, Number(value.promotion.winsRequired) || 0), results: normalizeMarks(value.promotion.results) } : null;
+    return [{ player, tier, visibleRankedScore: value.visibleRankedScore === null ? null : Number(value.visibleRankedScore), placementGames: Math.max(0, Number(value.placementGames) || 0), placementGamesRequired: value.placementGamesRequired == null ? null : Math.max(0, Number(value.placementGamesRequired) || 0), placementResults: normalizeMarks(value.placementResults), promotion, demotionWarning: Boolean(value.demotionWarning), wins: Math.max(0, Number(value.wins) || 0), losses: Math.max(0, Number(value.losses) || 0) }];
   });
   return { players, serverOpen: payload?.serverOpen === true };
 }
-
-function difficultyIndex(value) {
-  return DIFFICULTY_ORDER.indexOf(/^20(?:\.0+)?$/.test(value) ? "20.0" : value);
-}
-
+function difficultyIndex(value) { return DIFFICULTY_ORDER.indexOf(/^20(?:\.0+)?$/.test(value) ? "20.0" : value); }
 function difficultyTextColor(value) {
-  const hex = (DIFFICULTY_COLORS[value] || "#e8eaed").replace("#", "");
-  const red = Number.parseInt(hex.slice(0, 2), 16);
-  const green = Number.parseInt(hex.slice(2, 4), 16);
-  const blue = Number.parseInt(hex.slice(4, 6), 16);
-  return (red * 299 + green * 587 + blue * 114) / 1000 > 145 ? "#07080d" : "#ffffff";
+  const hex = (DIFFICULTY_COLORS[value] || "#e8eaed").replace("#", ""); const r = Number.parseInt(hex.slice(0, 2), 16); const g = Number.parseInt(hex.slice(2, 4), 16); const b = Number.parseInt(hex.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 145 ? "#07080d" : "#ffffff";
+}
+function poolDistribution(mainPool) {
+  const counts = [0, 0, 0, 0, 0, 0];
+  if (mainPool === 1) { counts[0] = 2; counts[1] = 2; counts[2] = 1; }
+  else if (mainPool === 6) { counts[3] = 1; counts[4] = 2; counts[5] = 2; }
+  else if (mainPool >= 2 && mainPool <= 5) { counts[mainPool - 2] = 1; counts[mainPool - 1] = 3; counts[mainPool] = 1; }
+  return counts;
 }
 
 function getInitialTheme() {
-  const current = document.documentElement.dataset.theme;
-  if (current === "light" || current === "dark") return current;
+  const current = document.documentElement.dataset.theme; if (current === "light" || current === "dark") return current;
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
-
 function useTheme() {
   const [theme, setTheme] = useState(getInitialTheme);
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.style.colorScheme = theme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#07080d" : "#f4f4f1");
-    try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch (_) {}
-  }, [theme]);
+  useEffect(() => { document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#07080d" : "#f4f4f1"); try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch (_) {} }, [theme]);
   return { theme, toggleTheme: () => setTheme((value) => value === "dark" ? "light" : "dark") };
 }
-
 function useRemoteData(loader) {
-  const [state, setState] = useState({ data: null, loading: true, error: "" });
-  const [reloadKey, setReloadKey] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    setState((current) => ({ ...current, loading: true, error: "" }));
-    loader(controller.signal)
-      .then((data) => setState({ data, loading: false, error: "" }))
-      .catch((reason) => {
-        if (!controller.signal.aborted) setState({ data: null, loading: false, error: reason instanceof Error ? reason.message : "데이터를 불러오지 못했습니다." });
-      });
-    return () => controller.abort();
-  }, [reloadKey]);
+  const [state, setState] = useState({ data: null, loading: true, error: "" }); const [reloadKey, setReloadKey] = useState(0);
+  useEffect(() => { const controller = new AbortController(); setState((current) => ({ ...current, loading: true, error: "" })); loader(controller.signal).then((data) => setState({ data, loading: false, error: "" })).catch((reason) => { if (!controller.signal.aborted) setState({ data: null, loading: false, error: reason instanceof Error ? reason.message : "데이터를 불러오지 못했습니다." }); }); return () => controller.abort(); }, [reloadKey]);
   return { ...state, reload: () => setReloadKey((value) => value + 1) };
 }
-
 async function fetchText(url, signal) {
-  const requestSignal = typeof AbortSignal.any === "function" && typeof AbortSignal.timeout === "function"
-    ? AbortSignal.any([signal, AbortSignal.timeout(15_000)])
-    : signal;
-  const response = await fetch(`${url}&v=${Date.now()}`, { cache: "no-store", signal: requestSignal });
-  if (!response.ok) throw new Error(`요청 실패 (${response.status})`);
-  return response.text();
+  const requestSignal = typeof AbortSignal.any === "function" && typeof AbortSignal.timeout === "function" ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : signal;
+  const response = await fetch(`${url}&v=${Date.now()}`, { cache: "no-store", signal: requestSignal }); if (!response.ok) throw new Error(`요청 실패 (${response.status})`); return response.text();
 }
-
-function useRankedMaps() {
-  const remote = useRemoteData(async (signal) => parseRankedMaps(await fetchText(SHEET2_CSV_URL, signal)));
-  return { ...remote, maps: remote.data || [] };
-}
-
+function useRankedMaps() { const remote = useRemoteData(async (signal) => parseRankedMaps(await fetchText(SHEET2_CSV_URL, signal))); return { ...remote, maps: remote.data || [] }; }
 function useLeaderboard() {
-  const remote = useRemoteData(async (signal) => {
-    const requestSignal = typeof AbortSignal.any === "function" && typeof AbortSignal.timeout === "function"
-      ? AbortSignal.any([signal, AbortSignal.timeout(15_000)])
-      : signal;
-    const response = await fetch(`${LEADERBOARD_URL}?v=${Date.now()}`, { cache: "no-store", signal: requestSignal });
-    if (!response.ok) throw new Error(`Ranked 서버 요청 실패 (${response.status})`);
-    return normalizeLeaderboard(await response.json());
-  });
-  return {
-    ...remote,
-    players: remote.data?.players || [],
-    serverOpen: remote.data?.serverOpen === true,
-  };
+  const remote = useRemoteData(async (signal) => { const requestSignal = typeof AbortSignal.any === "function" && typeof AbortSignal.timeout === "function" ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : signal; const response = await fetch(`${LEADERBOARD_URL}?v=${Date.now()}`, { cache: "no-store", signal: requestSignal }); if (!response.ok) throw new Error(`Ranked 서버 요청 실패 (${response.status})`); return normalizeLeaderboard(await response.json()); });
+  return { ...remote, players: remote.data?.players || [], serverOpen: remote.data?.serverOpen === true };
 }
+function useRankedInformation() { const remote = useRemoteData(async (signal) => { const [tierCsv, configCsv] = await Promise.all([fetchText(TIER_CSV_URL, signal), fetchText(CONFIG_CSV_URL, signal)]); return { tiers: parseTierRules(tierCsv), config: parseRankedConfig(configCsv) }; }); return { ...remote, tiers: remote.data?.tiers || [], config: remote.data?.config || {} }; }
 
-function useRankedInformation() {
-  const remote = useRemoteData(async (signal) => {
-    const [tierCsv, configCsv] = await Promise.all([fetchText(TIER_CSV_URL, signal), fetchText(CONFIG_CSV_URL, signal)]);
-    return { tiers: parseTierRules(tierCsv), config: parseRankedConfig(configCsv) };
-  });
-  return { ...remote, tiers: remote.data?.tiers || [], config: remote.data?.config || {} };
-}
-
-function DifficultyBadge({ value }) {
-  return <span className="difficulty-badge" style={{ background: DIFFICULTY_COLORS[value] || "#e8eaed", color: difficultyTextColor(value) }}>{value}</span>;
-}
-
-function TierBadge({ tier }) {
-  return <span className={`tier-badge tier-${tier.toLowerCase()}`}>{tier}</span>;
-}
-
-function ServerStatus({ loading, error, serverOpen }) {
-  const open = !loading && !error && serverOpen;
-  const label = loading ? "서버 확인 중" : open ? "서버 열림" : "서버 닫힘";
-  return <div className={`server-status ${open ? "is-open" : "is-closed"}`} role="status" aria-live="polite"><i aria-hidden="true" /><span>{label}</span></div>;
-}
-
-function StateCard({ type, title, description, action }) {
-  return <div className={`state-card ${type === "error" ? "error-state" : ""}`} role={type === "error" ? "alert" : undefined}>
-    <span>{type === "error" ? "LOAD FAILED" : "NO DATA"}</span><h2>{title}</h2><p>{description}</p>{action}
-  </div>;
-}
+function DifficultyBadge({ value }) { return <span className="difficulty-badge" style={{ background: DIFFICULTY_COLORS[value] || "#e8eaed", color: difficultyTextColor(value) }}>{value}</span>; }
+function TierBadge({ tier }) { return <span className={`tier-badge tier-${tier.toLowerCase()}`}>{tier}</span>; }
+function ServerStatus({ loading, error, serverOpen }) { const open = !loading && !error && serverOpen; const label = loading ? "서버 확인 중" : open ? "서버 열림" : "서버 닫힘"; return <div className={`server-status ${open ? "is-open" : "is-closed"}`} role="status" aria-live="polite"><i aria-hidden="true" /><span>{label}</span></div>; }
+function StateCard({ type, title, description, action }) { return <div className={`state-card ${type === "error" ? "error-state" : ""}`} role={type === "error" ? "alert" : undefined}><span>{type === "error" ? "LOAD FAILED" : "NO DATA"}</span><h2>{title}</h2><p>{description}</p>{action}</div>; }
 
 function MapList({ maps, loading, error, reload }) {
-  const [query, setQuery] = useState("");
-  const [poolFilter, setPoolFilter] = useState("all");
-  const assignedMaps = useMemo(() => maps.filter((map) => map.pool !== null), [maps]);
-  const unassignedCount = maps.length - assignedMaps.length;
-  const filteredMaps = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase();
-    return assignedMaps.filter((map) => {
-      const matchesQuery = !normalizedQuery || map.title.toLocaleLowerCase().includes(normalizedQuery) || map.mapCode.toLocaleLowerCase().includes(normalizedQuery);
-      return matchesQuery && (poolFilter === "all" || map.pool === Number(poolFilter));
-    }).sort((left, right) => left.pool - right.pool || difficultyIndex(right.difficulty) - difficultyIndex(left.difficulty) || left.title.localeCompare(right.title, "ko"));
-  }, [assignedMaps, poolFilter, query]);
-
-  return <section className="tab-page">
-    <div className="page-heading"><div><p className="section-kicker">SHEET2 / LIVE MAP DATA</p><h1>Ranked Map Pool</h1><p>현재 Ranked에 배정된 맵과 경기 진입 기준을 확인합니다.</p></div><div className="total-counter"><span>ACTIVE MAPS</span><strong>{loading ? "—" : assignedMaps.length}</strong></div></div>
-    <div className="list-toolbar"><label className="search-shell"><Icon name="search" /><span className="sr-only">맵 검색</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="맵 제목 또는 맵 코드 검색" /></label><select className="pool-select" value={poolFilter} onChange={(event) => setPoolFilter(event.target.value)} aria-label="Ranked Pool 필터"><option value="all">전체 Pool</option>{POOLS.map((pool) => <option value={pool} key={pool}>Pool {pool}</option>)}</select><button className="reload-button" type="button" onClick={reload} disabled={loading}><Icon name="refresh" />새로고침</button></div>
-    {error ? <StateCard type="error" title="sheet2를 불러오지 못했습니다." description={error} action={<button className="primary-button" onClick={reload}>다시 시도</button>} />
-      : loading ? <div className="map-list" aria-busy="true">{Array.from({ length: 7 }, (_, index) => <div className="map-row skeleton-row" key={index}><i /><i /><i /><i /><i /></div>)}</div>
-      : filteredMaps.length ? <><div className="result-line"><span>{filteredMaps.length} MAPS</span>{unassignedCount > 0 && <small>Pool 미배정 {unassignedCount}개는 목록에서 제외됨</small>}</div><div className="map-list"><div className="map-list-head" aria-hidden="true"><span>POOL</span><span>MAP</span><span>DIFFICULTY</span><span>MAP CODE</span><span>QUALIFYING</span></div>{filteredMaps.map((map) => <article className={`map-row pool-${map.pool}`} key={`${map.mapCode}-${map.title}`}><div className="pool-mark"><span>POOL</span><strong>{map.pool}</strong></div><div className="map-title"><h2>{map.title}</h2><span>RANKED MAP</span></div><DifficultyBadge value={map.difficulty} /><div className="map-code"><span>맵 코드</span><strong>{map.mapCode}</strong></div><div className="qualifying"><span>QUALIFYING</span><strong>{map.qualifyingPercent ? `${map.qualifyingPercent}%` : "—"}</strong></div></article>)}</div></>
-      : <StateCard title={assignedMaps.length ? "검색 결과가 없습니다." : "배정된 맵이 없습니다."} description={assignedMaps.length ? "검색어나 Pool 필터를 변경해 보세요." : "sheet2의 Ranked Pool (1~6) 열에 Pool 값을 입력하면 여기에 표시됩니다."} />}
-  </section>;
+  const [query, setQuery] = useState(""); const [poolFilter, setPoolFilter] = useState("all"); const assignedMaps = useMemo(() => maps.filter((map) => map.pool !== null), [maps]); const unassignedCount = maps.length - assignedMaps.length;
+  const filteredMaps = useMemo(() => { const q = query.trim().toLocaleLowerCase(); return assignedMaps.filter((map) => (!q || map.title.toLocaleLowerCase().includes(q) || map.mapCode.toLocaleLowerCase().includes(q)) && (poolFilter === "all" || map.pool === Number(poolFilter))).sort((a, b) => a.pool - b.pool || difficultyIndex(b.difficulty) - difficultyIndex(a.difficulty) || a.title.localeCompare(b.title, "ko")); }, [assignedMaps, poolFilter, query]);
+  return <section className="tab-page"><div className="page-heading"><div><p className="section-kicker">SHEET2 / LIVE MAP DATA</p><h1>Ranked Map Pool</h1><p>현재 Ranked에 배정된 맵과 경기 진입 기준을 확인합니다.</p></div><div className="total-counter"><span>ACTIVE MAPS</span><strong>{loading ? "—" : assignedMaps.length}</strong></div></div><div className="list-toolbar"><label className="search-shell"><Icon name="search" /><span className="sr-only">맵 검색</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="맵 제목 또는 맵 코드 검색" /></label><select className="pool-select" value={poolFilter} onChange={(event) => setPoolFilter(event.target.value)} aria-label="Ranked Pool 필터"><option value="all">전체 Pool</option>{POOLS.map((pool) => <option value={pool} key={pool}>Pool {pool}</option>)}</select><button className="reload-button" type="button" onClick={reload} disabled={loading}><Icon name="refresh" />새로고침</button></div>{error ? <StateCard type="error" title="sheet2를 불러오지 못했습니다." description={error} action={<button className="primary-button" onClick={reload}>다시 시도</button>} /> : loading ? <div className="map-list" aria-busy="true">{Array.from({ length: 7 }, (_, index) => <div className="map-row skeleton-row" key={index}><i /><i /><i /><i /><i /></div>)}</div> : filteredMaps.length ? <><div className="result-line"><span>{filteredMaps.length} MAPS</span>{unassignedCount > 0 && <small>Pool 미배정 {unassignedCount}개는 목록에서 제외됨</small>}</div><div className="map-list"><div className="map-list-head" aria-hidden="true"><span>POOL</span><span>MAP</span><span>DIFFICULTY</span><span>MAP CODE</span><span>QUALIFYING</span></div>{filteredMaps.map((map) => <article className={`map-row pool-${map.pool}`} key={`${map.mapCode}-${map.title}`}><div className="pool-mark"><span>POOL</span><strong>{map.pool}</strong></div><div className="map-title"><h2>{map.title}</h2><span>RANKED MAP</span></div><DifficultyBadge value={map.difficulty} /><div className="map-code"><span>맵 코드</span><strong>{map.mapCode}</strong></div><div className="qualifying"><span>QUALIFYING</span><strong>{map.qualifyingPercent ? `${map.qualifyingPercent}%` : "—"}</strong></div></article>)}</div></> : <StateCard title={assignedMaps.length ? "검색 결과가 없습니다." : "배정된 맵이 없습니다."} description={assignedMaps.length ? "검색어나 Pool 필터를 변경해 보세요." : "sheet2의 Ranked Pool (1~6) 열에 Pool 값을 입력하면 여기에 표시됩니다."} />}</section>;
 }
 
-function formatMarks(results, required) {
-  const knownRequired = Number.isFinite(required) && required > 0;
-  const length = knownRequired ? required : results.length;
-  const marks = results.slice(0, length).map((result) => result === "WIN" ? "O" : "X");
-  return `${marks.join("")}${"-".repeat(Math.max(0, length - marks.length))}` || "—";
-}
-
-function formatWinRate(player) {
-  const total = player.wins + player.losses;
-  if (!total) return "0";
-  const rate = player.wins / total * 100;
-  return Number.isInteger(rate) ? String(rate) : rate.toFixed(1);
-}
-
-function RankingRows({ players, rankedPlayers, unranked = false }) {
-  return <div className={`ranking-list${unranked ? " unranked-list" : ""}`}>
-    <div className="ranking-head" aria-hidden="true"><span>{unranked ? "GROUP" : "RANK"}</span><span>PLAYER</span><span>TIER / STATUS</span><span>RECORD</span></div>
-    {players.map((player) => {
-      const rank = unranked ? null : rankedPlayers.indexOf(player) + 1;
-      return <article className={`ranking-row${unranked ? " unranked-row" : ""}`} key={`${player.player}-${rank ?? "unranked"}`}>
-        <strong className="rank-number">{rank === null ? "—" : String(rank).padStart(2, "0")}</strong>
-        <div className="player-name"><strong>{player.player}</strong><span>{unranked ? "PLACEMENT PLAYER" : "RANKED PLAYER"}</span></div>
-        <PlayerStatus player={player} />
-        <div className={`record-line${unranked ? " placement-record" : ""}`}>{unranked ? <span>배치 진행 중</span> : <><strong>{player.wins} <small>wins</small></strong><strong>{player.losses} <small>lose</small></strong><b>({formatWinRate(player)}%)</b></>}</div>
-      </article>;
-    })}
-  </div>;
-}
-
+function formatMarks(results, required) { const known = Number.isFinite(required) && required > 0; const length = known ? required : results.length; const marks = results.slice(0, length).map((result) => result === "WIN" ? "O" : "X"); return `${marks.join("")}${"-".repeat(Math.max(0, length - marks.length))}` || "—"; }
+function formatWinRate(player) { const total = player.wins + player.losses; if (!total) return "0"; const rate = player.wins / total * 100; return Number.isInteger(rate) ? String(rate) : rate.toFixed(1); }
 function PlayerStatus({ player }) {
-  if (player.tier === "UNRANKED" || player.visibleRankedScore === null) return <div className="player-status"><TierBadge tier="UNRANKED" /><strong className="series-marks">{formatMarks(player.placementResults, player.placementGamesRequired)}</strong><small>배치 {player.placementGames}/{player.placementGamesRequired ?? "?"}</small></div>;
+  if (player.tier === "UNRANKED" || player.visibleRankedScore === null) return <div className="player-status"><TierBadge tier="UNRANKED" /><strong className="series-marks">{formatMarks(player.placementResults, player.placementGamesRequired)}</strong><small>배치 진행 중</small></div>;
   if (player.promotion) return <div className="player-status"><TierBadge tier={player.promotion.sourceTier} /><strong className="series-marks">{formatMarks(player.promotion.results, player.promotion.gamesRequired)}</strong><small>{player.promotion.targetTier} 승급전 · {player.promotion.winsRequired}승 필요</small></div>;
   return <div className="player-status"><TierBadge tier={player.tier} /><strong className="lp-value">{Number.isFinite(player.visibleRankedScore) ? player.visibleRankedScore.toLocaleString() : "—"} LP</strong>{player.demotionWarning && <small className="warning-label">강등 경고</small>}</div>;
 }
-
+function RankingRows({ players, rankedPlayers, unranked = false }) { return <div className={`ranking-list${unranked ? " unranked-list" : ""}`}><div className="ranking-head" aria-hidden="true"><span>{unranked ? "GROUP" : "RANK"}</span><span>PLAYER</span><span>TIER / STATUS</span><span>RECORD</span></div>{players.map((player) => { const rank = unranked ? null : rankedPlayers.indexOf(player) + 1; return <article className={`ranking-row${unranked ? " unranked-row" : ""}`} key={`${player.player}-${rank ?? "unranked"}`}><strong className="rank-number">{rank === null ? "—" : String(rank).padStart(2, "0")}</strong><div className="player-name"><strong>{player.player}</strong><span>{unranked ? "PLACEMENT PLAYER" : "RANKED PLAYER"}</span></div><PlayerStatus player={player} /><div className={`record-line${unranked ? " placement-record" : ""}`}>{unranked ? <span>배치 진행 중</span> : <><strong>{player.wins} <small>wins</small></strong><strong>{player.losses} <small>lose</small></strong><b>({formatWinRate(player)}%)</b></>}</div></article>; })}</div>; }
 function Ranking({ players, loading, error, reload }) {
-  const [query, setQuery] = useState("");
-  const rankedPlayers = useMemo(() => players.filter((player) => player.tier !== "UNRANKED" && player.visibleRankedScore !== null), [players]);
-  const unrankedPlayers = useMemo(() => players.filter((player) => player.tier === "UNRANKED" || player.visibleRankedScore === null), [players]);
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  const rankedFiltered = useMemo(() => rankedPlayers.filter((player) => player.player.toLocaleLowerCase().includes(normalizedQuery)), [rankedPlayers, normalizedQuery]);
-  const unrankedFiltered = useMemo(() => unrankedPlayers.filter((player) => player.player.toLocaleLowerCase().includes(normalizedQuery)), [unrankedPlayers, normalizedQuery]);
-  const hasResults = rankedFiltered.length + unrankedFiltered.length > 0;
-  return <section className="tab-page">
-    <div className="page-heading"><div><p className="section-kicker">RANKED DATABASE / PUBLIC DATA</p><h1>Leaderboard</h1><p>LP, 티어, 승·패 전적과 배치·승급전 상태를 표시합니다. MMR은 동률 정렬에만 사용되며 공개되지 않습니다.</p></div><div className="total-counter"><span>PLAYERS</span><strong>{loading ? "—" : players.length}</strong></div></div>
-    <div className="list-toolbar ranking-toolbar"><label className="search-shell"><Icon name="search" /><span className="sr-only">플레이어 검색</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="플레이어 이름 검색" /></label><button className="reload-button" type="button" onClick={reload} disabled={loading}><Icon name="refresh" />새로고침</button></div>
-    {error ? <StateCard type="error" title="순위 정보를 불러오지 못했습니다." description={`${error} · 서버에 공개 순위 API가 배포되어 있고 GitHub Pages 주소가 CORS_ORIGINS에 등록되어 있는지 확인하세요.`} action={<button className="primary-button" onClick={reload}>다시 시도</button>} />
-      : loading ? <div className="ranking-list" aria-busy="true">{Array.from({ length: 6 }, (_, index) => <div className="ranking-row ranking-skeleton" key={index}><i /><i /><i /><i /></div>)}</div>
-      : hasResults ? <>{rankedFiltered.length > 0 && <RankingRows players={rankedFiltered} rankedPlayers={rankedPlayers} />}{unrankedFiltered.length > 0 && <div className="unranked-section"><div className="unranked-heading"><div><p className="section-kicker">PLACEMENT GROUP</p><h2>Unranked</h2></div><span>{unrankedFiltered.length} PLAYERS</span></div><RankingRows players={unrankedFiltered} rankedPlayers={rankedPlayers} unranked /></div>}</> : <StateCard title={players.length ? "검색 결과가 없습니다." : "표시할 플레이어가 없습니다."} description={players.length ? "플레이어 이름을 다시 확인하세요." : "Ranked DB에 생성된 플레이어가 생기면 여기에 표시됩니다."} />}
-  </section>;
+  const [query, setQuery] = useState(""); const rankedPlayers = useMemo(() => players.filter((player) => player.tier !== "UNRANKED" && player.visibleRankedScore !== null), [players]); const unrankedPlayers = useMemo(() => players.filter((player) => player.tier === "UNRANKED" || player.visibleRankedScore === null), [players]); const q = query.trim().toLocaleLowerCase(); const rankedFiltered = useMemo(() => rankedPlayers.filter((player) => player.player.toLocaleLowerCase().includes(q)), [rankedPlayers, q]); const unrankedFiltered = useMemo(() => unrankedPlayers.filter((player) => player.player.toLocaleLowerCase().includes(q)), [unrankedPlayers, q]); const hasResults = rankedFiltered.length + unrankedFiltered.length > 0;
+  return <section className="tab-page"><div className="page-heading"><div><p className="section-kicker">RANKED DATABASE / PUBLIC DATA</p><h1>Leaderboard</h1><p>LP, 티어, 승·패 전적과 배치·승급전 상태를 표시합니다. Hidden MMR은 공개되지 않습니다.</p></div><div className="total-counter"><span>PLAYERS</span><strong>{loading ? "—" : players.length}</strong></div></div><div className="list-toolbar ranking-toolbar"><label className="search-shell"><Icon name="search" /><span className="sr-only">플레이어 검색</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="플레이어 이름 검색" /></label><button className="reload-button" type="button" onClick={reload} disabled={loading}><Icon name="refresh" />새로고침</button></div>{error ? <StateCard type="error" title="순위 정보를 불러오지 못했습니다." description={`${error} · 공개 순위 API와 CORS 설정을 확인하세요.`} action={<button className="primary-button" onClick={reload}>다시 시도</button>} /> : loading ? <div className="ranking-list" aria-busy="true">{Array.from({ length: 6 }, (_, index) => <div className="ranking-row ranking-skeleton" key={index}><i /><i /><i /><i /></div>)}</div> : hasResults ? <>{rankedFiltered.length > 0 && <RankingRows players={rankedFiltered} rankedPlayers={rankedPlayers} />}{unrankedFiltered.length > 0 && <div className="unranked-section"><div className="unranked-heading"><div><p className="section-kicker">PLACEMENT GROUP</p><h2>Unranked</h2></div><span>{unrankedFiltered.length} PLAYERS</span></div><RankingRows players={unrankedFiltered} rankedPlayers={rankedPlayers} unranked /></div>}</> : <StateCard title={players.length ? "검색 결과가 없습니다." : "표시할 플레이어가 없습니다."} description={players.length ? "플레이어 이름을 다시 확인하세요." : "Ranked DB에 플레이어가 생기면 여기에 표시됩니다."} />}</section>;
 }
 
-function MatchProgression() {
-  return <section className="match-format-section" aria-labelledby="match-format-title">
-    <div className="composition-title-line match-format-title"><div><p className="section-kicker">HOW RANKED WORKS</p><h2 id="match-format-title">진행 방식</h2></div><span>BEST OF 3</span></div>
-    <ol className="match-flow-grid">{MATCH_FLOW.map((phase, index) => <li className={`match-flow-step${index === MATCH_FLOW.length - 1 ? " conditional-step" : ""}`} key={phase.step}>
-      <div className="flow-marker"><span>{phase.step}</span><i aria-hidden="true" /></div>
-      <p>{phase.eyebrow}</p><h3>{phase.title}</h3><small>{phase.description}</small>
-    </li>)}</ol>
-    <div className="round-rule-grid">{ROUND_RULES.map((rule) => <article className="round-rule-card" key={rule.label}>
-      <div><strong>{rule.value}</strong><span>{rule.label}</span></div><h3>{rule.title}</h3><p>{rule.description}</p>
-    </article>)}</div>
-    <div className="score-rule-shell"><div className="score-rule-heading"><div><p className="section-kicker">ROUND SCORING</p><h3>Attempt 점수</h3></div><p>모든 점수 구간은 먼저 맵별 Qualifying 기준을 통과해야 적용됩니다.</p></div><div className="score-rule-grid">{SCORE_RULES.map((rule) => <div className="score-rule" key={rule.range}><span>{rule.range}</span><strong>{rule.score}</strong><small>{rule.detail}</small></div>)}</div></div>
-    <div className="authority-note"><span>SERVER AUTHORITATIVE</span><p>시간, Attempt 승인, 점수, Clear, 라운드와 최종 승자는 Ranked 서버가 판정합니다. 최종 매치 무승부는 없으며 승자가 나올 때까지 Death Match가 반복됩니다.</p></div>
-  </section>;
+function MatchProgression() { return <section className="match-format-section" aria-labelledby="match-format-title"><div className="composition-title-line match-format-title"><div><p className="section-kicker">HOW RANKED WORKS</p><h2 id="match-format-title">진행 방식</h2></div><span>BEST OF 3</span></div><ol className="match-flow-grid">{MATCH_FLOW.map((phase, index) => <li className={`match-flow-step${index === MATCH_FLOW.length - 1 ? " conditional-step" : ""}`} key={phase.step}><div className="flow-marker"><span>{phase.step}</span><i aria-hidden="true" /></div><p>{phase.eyebrow}</p><h3>{phase.title}</h3><small>{phase.description}</small></li>)}</ol><div className="round-rule-grid">{ROUND_RULES.map((rule) => <article className="round-rule-card" key={rule.label}><div><strong>{rule.value}</strong><span>{rule.label}</span></div><h3>{rule.title}</h3><p>{rule.description}</p></article>)}</div><div className="score-rule-shell"><div className="score-rule-heading"><div><p className="section-kicker">ROUND SCORING</p><h3>Attempt 점수</h3></div><p>맵별 Qualifying 기준을 통과한 뒤 구간별 배율을 적용합니다.</p></div><div className="score-rule-grid">{SCORE_RULES.map((rule) => <div className="score-rule" key={rule.range}><span>{rule.range}</span><strong>{rule.score}</strong><small>{rule.detail}</small></div>)}</div></div><div className="authority-note"><span>SERVER AUTHORITATIVE</span><p>시간, Attempt 승인, 점수, Clear, 라운드와 최종 승자는 Ranked 서버가 판정합니다. 최종 매치 draw는 없고 승자가 나올 때까지 Death Match가 반복됩니다.</p></div></section>; }
+
+function RankedPolicyOverview() { return <section className="ranked-policy-grid"><article><p className="section-kicker">HIDDEN MMR / VISIBLE LP</p><h2>MMR과 LP</h2><p>Hidden MMR은 매칭과 LP 보정에 사용되지만 공개되지 않습니다. MMR이 현재 LP보다 높으면 승리 시 더 많이 오르고 패배 시 덜 내려가며, 낮으면 반대로 적용됩니다. 상대의 강약도 함께 반영됩니다.</p></article><article><p className="section-kicker">PERFECT WIN</p><h2>Perfect Win</h2><p>최종 승자가 한 Round도 패배하지 않고, 모든 결정 승리를 실제 3-Clear로 만든 경우에만 인정됩니다. Round draw는 허용되지만 score win, forfeit, forced win, Death Match 승리는 조건을 만족하지 않습니다.</p></article><article><p className="section-kicker">PROMOTION</p><h2>승급전</h2><p>예상 승리 LP가 다음 cutoff에 닿기 전에 LP를 cutoff−1에 고정하고 승급전을 시작합니다. 승급전 중에도 Hidden MMR과 streak는 계속 변하며, 필요한 판수와 승수는 운영 시트의 티어 설정을 따릅니다.</p></article></section>; }
+
+function PlacementSummary({ onOpenPlacement }) { return <section className="placement-summary"><div><p className="section-kicker">SOLO STAGE PLACEMENT</p><h2>배치 경기</h2><p>현재 Placement는 PvP가 아니라 싱글플레이 Stage 방식입니다. 3 Stage 또는 5 Stage를 선택하고, Stage마다 서로 다른 2개 맵을 플레이해 Map Score와 Grade를 쌓습니다.</p><div className="placement-summary-facts"><span><strong>3 / 5</strong> STAGES</span><span><strong>2</strong> MAPS / STAGE</span><span><strong>3:00</strong> MAP TIME</span><span><strong>2</strong> CLEAR TARGET</span></div></div><button className="placement-detail-button" type="button" onClick={onOpenPlacement}>자세히 보기 <Icon name="arrow" /></button></section>; }
+
+function Information({ maps, mapsLoading, tiers, config, loading, error, reload, onOpenPlacement }) {
+  const poolCounts = useMemo(() => POOLS.map((pool) => maps.filter((map) => map.pool === pool).length), [maps]); const demotionPenalty = Number(config.demotionScorePenalty) || 0;
+  return <section className="tab-page"><div className="page-heading composition-heading"><div><p className="section-kicker">RANKED RULES / LIVE CONFIG</p><h1>Ranked Info</h1><p>현재 Ranked PvP 규칙과 운영 시트의 티어·맵 풀 설정을 확인합니다. Placement는 별도 상세 화면에서 설명합니다.</p></div><button className="reload-button" type="button" onClick={reload} disabled={loading}><Icon name="refresh" />정보 새로고침</button></div><MatchProgression /><RankedPolicyOverview /><PlacementSummary onOpenPlacement={onOpenPlacement} />{error ? <StateCard type="error" title="운영 정보를 불러오지 못했습니다." description={error} action={<button className="primary-button" onClick={reload}>다시 시도</button>} /> : <><div className="info-section-shell"><div className="composition-title-line"><div><p className="section-kicker">TIER BANDS</p><h2>티어 커트 · 승급전</h2></div><span>운영 시트 실시간</span></div><div className="table-scroll"><table className="tier-rule-table"><thead><tr><th>티어</th><th>LP 구간</th><th>승급</th><th>Main Pool</th><th>Deathmatch Pool</th></tr></thead><tbody>{loading ? <tr><td colSpan="5">불러오는 중…</td></tr> : tiers.map((tier, index) => { const target = tiers[index + 1]?.tier; return <tr key={tier.tier}><td><TierBadge tier={tier.tier} /></td><td><strong>{tier.minimum.toLocaleString()} ~ {tier.maximum === null ? "∞" : (tier.maximum - 1).toLocaleString()} LP</strong></td><td>{target ? <><strong>{tier.tier} → {target}</strong><small>{tier.promotionGames}전 {tier.promotionWinsRequired}승</small></> : <strong>최상위 티어</strong>}</td><td>Pool {tier.mainPool}</td><td>Pool {tier.deathmatchPool}</td></tr>; })}</tbody></table></div></div><div className="demotion-panel"><div><p className="section-kicker">DEMOTION POLICY</p><h2>강등 조건</h2></div><ol><li>패배 예상 LP가 현재 tier floor 아래면 먼저 LP를 floor에 고정합니다.</li><li>Hidden MMR이 floor 이상이면 경고 없이 floor를 유지합니다. Hidden MMR도 floor 미만이면 첫 qualifying loss에서 <strong>DEMOTION WARNING</strong>이 켜집니다.</li><li>경고 상태에서 다음 qualifying loss가 발생하면 강등됩니다.{demotionPenalty ? <> 기본 운영값은 새 tier 기준 <strong>{demotionPenalty} LP</strong> penalty를 사용합니다.</> : null} 승리하면 경고가 해제됩니다.</li></ol></div><div className="pool-count-strip">{POOLS.map((pool, index) => <div className={`pool-count pool-${pool}`} key={pool}><span>POOL {pool}</span><strong>{mapsLoading ? "—" : poolCounts[index]}</strong><small>등록 맵</small></div>)}</div><div className="composition-table-shell"><div className="composition-title-line"><div><p className="section-kicker">5 MAP CANDIDATES</p><h2>Main Pool별 후보 분포</h2></div><span>합계 5개</span></div><div className="table-scroll"><table><thead><tr><th>티어</th><th>Main</th>{POOLS.map((pool) => <th key={pool}>Pool {pool}</th>)}<th>합계</th></tr></thead><tbody>{loading ? <tr><td colSpan="9">불러오는 중…</td></tr> : tiers.map((tier) => { const counts = poolDistribution(tier.mainPool); return <tr key={`dist-${tier.tier}`}><td><TierBadge tier={tier.tier} /></td><td><strong>Pool {tier.mainPool}</strong></td>{counts.map((count, index) => <td key={`${tier.tier}-${index}`}><span className={`distribution-value${count ? " is-active" : ""}`}>{count || "—"}</span></td>)}<td><strong className="distribution-total">5</strong></td></tr>; })}</tbody></table></div></div></>}</section>;
 }
 
-function Information({ maps, mapsLoading, tiers, config, loading, error, reload }) {
-  const poolCounts = useMemo(() => POOLS.map((pool) => maps.filter((map) => map.pool === pool).length), [maps]);
-  const demotionPenalty = Number(config.demotionScorePenalty) || 0;
-  return <section className="tab-page">
-    <div className="page-heading composition-heading"><div><p className="section-kicker">RANKED RULES / LIVE CONFIG</p><h1>Ranked Info</h1><p>Ranked 경기 진행 방식과 현재 운영 시트의 티어 커트, 승급·강등 규칙, 맵 풀 구성을 확인합니다.</p></div><button className="reload-button" type="button" onClick={reload} disabled={loading}><Icon name="refresh" />정보 새로고침</button></div>
-    <MatchProgression />
-    {error ? <StateCard type="error" title="운영 정보를 불러오지 못했습니다." description={error} action={<button className="primary-button" onClick={reload}>다시 시도</button>} /> : <>
-      <div className="info-section-shell"><div className="composition-title-line"><div><p className="section-kicker">TIER BANDS</p><h2>티어 커트 · 승급전</h2></div><span>운영 시트 실시간</span></div><div className="table-scroll"><table className="tier-rule-table"><thead><tr><th>티어</th><th>LP 구간</th><th>승급</th><th>메인 풀</th><th>데스매치 풀</th></tr></thead><tbody>{loading ? <tr><td colSpan="5">불러오는 중…</td></tr> : tiers.map((tier, index) => {
-        const target = tiers[index + 1]?.tier;
-        return <tr key={tier.tier}><td><TierBadge tier={tier.tier} /></td><td><strong>{tier.minimum.toLocaleString()} ~ {tier.maximum === null ? "∞" : (tier.maximum - 1).toLocaleString()} LP</strong></td><td>{target ? <><strong>{tier.tier} → {target}</strong><small>{tier.promotionGames}전 {tier.promotionWinsRequired}승</small></> : <strong>최상위 티어</strong>}</td><td>Pool {tier.mainPool}</td><td>Pool {tier.deathmatchPool}</td></tr>;
-      })}</tbody></table></div></div>
-      <div className="demotion-panel"><div><p className="section-kicker">DEMOTION POLICY</p><h2>강등 조건</h2></div><ol><li>RED를 제외하고, 패배 시 LP가 현재 티어 커트까지 내려가며 내부 등급 평가도 커트 미만이면 <strong>강등 경고</strong>가 켜집니다.</li><li>경고 상태에서 같은 강등 조건을 충족하는 결정 패배가 다시 발생하면 한 단계 강등되고 <strong>현재 커트 - {demotionPenalty || "—"} LP</strong>가 적용됩니다.</li><li>승리하면 강등 경고가 해제됩니다.</li></ol></div>
-      <div className="pool-count-strip">{POOLS.map((pool, index) => <div className={`pool-count pool-${pool}`} key={pool}><span>POOL {pool}</span><strong>{mapsLoading ? "—" : poolCounts[index]}</strong><small>등록 맵</small></div>)}</div>
-      <div className="composition-table-shell"><div className="composition-title-line"><div><p className="section-kicker">5 MAP CANDIDATES</p><h2>티어별 풀 등장 개수</h2></div><span>합계 5개</span></div><div className="table-scroll"><table><thead><tr><th>티어</th>{POOLS.map((pool) => <th key={pool}>Pool {pool}</th>)}<th>합계</th></tr></thead><tbody>{TIER_POOL_DISTRIBUTION.map(({ tier, counts }) => <tr key={tier}><td><TierBadge tier={tier} /></td>{counts.map((count, index) => <td key={`${tier}-${index}`}><span className={`distribution-value${count ? " is-active" : ""}`}>{count || "—"}</span></td>)}<td><strong className="distribution-total">5</strong></td></tr>)}</tbody></table></div></div>
-    </>}
-  </section>;
-}
+function PlacementInformation({ onBack }) { return <section className="tab-page placement-page"><div className="placement-page-nav"><button type="button" onClick={onBack}><Icon name="back" />정보로 돌아가기</button><span>RANKED INFO / PLACEMENT</span></div><div className="placement-hero"><div><p className="section-kicker">SOLO STAGE PLACEMENT</p><h1>Placement</h1><p>기존 PvP Placement는 폐기되었습니다. 배치 미완료 플레이어는 server-authoritative 싱글플레이 Run으로 최초 LP와 티어를 결정합니다.</p></div><div className="placement-hero-badge"><strong>3 / 5</strong><span>STAGE SELECT</span></div></div><div className="placement-mode-grid"><article><span>QUICK</span><h2>3 Stage</h2><strong>6 Maps</strong><p>Stage당 2맵, 총 6맵을 플레이합니다. 빠르게 끝나는 대신 최종 Placement는 <b>AQUA 최상단</b>을 초과할 수 없습니다.</p></article><article><span>FULL</span><h2>5 Stage</h2><strong>10 Maps</strong><p>Stage당 2맵, 총 10맵을 플레이하며 전체 Placement 범위를 사용합니다.</p></article></div><section className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">01 / SETUP</p><h2>시작 Pool과 Run 길이</h2></div><span>시작 후 변경 불가</span></div><p>Run 시작 전에 3 Stage 또는 5 Stage와 본인이 생각하는 시작 실력대인 <b>POOL 1–POOL 6</b>을 선택합니다. 높은 Pool을 고른다고 최종 티어가 보장되지는 않습니다. 같은 Stage의 두 canonical map은 반드시 서로 다릅니다.</p><div className="placement-callout"><strong>SKIP PLACEMENT</strong><p>Run 시작 전에는 Placement를 건너뛸 수 있습니다. 확인 시 Hidden MMR 150 / RED 150 LP로 exactly-once 확정됩니다.</p></div></section><section className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">02 / MAP RULE</p><h2>각 맵 진행 방식</h2></div><span>3:00 + FINAL ATTEMPT</span></div><div className="placement-stat-grid"><article><strong>180s</strong><span>MAIN TIME</span><p>3분 동안 Attempt를 시작합니다.</p></article><article><strong>10s</strong><span>FINAL ATTEMPT</span><p>마지막 10초 안에 시작이 승인된 Attempt는 deadline 뒤에도 자연 종료까지 정산됩니다.</p></article><article><strong>2</strong><span>CLEAR TARGET</span><p>2 Clears를 달성하면 즉시 500점 · S Grade로 맵이 끝납니다.</p></article><article><strong>TOP 2</strong><span>MAP SCORE</span><p>유효 Attempt의 awarded score 중 상위 2개를 합산합니다.</p></article></div><div className="score-rule-shell placement-score-shell"><div className="score-rule-heading"><div><p className="section-kicker">SAME ATTEMPT CURVE</p><h3>Attempt 점수</h3></div><p>일반 Ranked와 동일한 scoring curve를 사용합니다.</p></div><div className="score-rule-grid">{SCORE_RULES.map((rule) => <div className="score-rule" key={`placement-${rule.range}`}><span>{rule.range}</span><strong>{rule.score}</strong><small>{rule.detail}</small></div>)}</div></div></section><section className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">03 / GRADE & POOL</p><h2>Map / Stage Grade</h2></div><span>Stage Score = 두 Map 평균</span></div><div className="placement-grade-grid">{PLACEMENT_GRADES.map((item) => <article className={`grade-${item.grade.toLowerCase()}`} key={item.grade}><strong>{item.grade}</strong><div><span>{item.range}</span><b>{item.movement}</b><small>{item.detail}</small></div></article>)}</div><p className="placement-muted">Stage Score는 두 Map Score의 평균입니다. Stage Grade에 따라 다음 Stage Pool이 이동하고 Pool은 1–6 범위로 제한됩니다.</p></section><section className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">04 / RESULT</p><h2>최종 배치 산정</h2></div><span>SERVER AUTHORITATIVE</span></div><div className="placement-result-flow"><article><span>1</span><h3>전체 evidence</h3><p>3 Stage는 6 Map + 3 Stage, 5 Stage는 10 Map + 5 Stage의 실제 score·Grade·Pool을 모두 사용합니다.</p></article><article><span>2</span><h3>Placement Rating</h3><p>Pool anchor와 normalized performance를 이용해 Placement Rating을 계산합니다.</p></article><article><span>3</span><h3>MMR → LP / Tier</h3><p>Placement Rating을 Hidden MMR로 연결한 뒤 기존 visible LP / Tier finalization을 적용합니다.</p></article><article><span>4</span><h3>Cutoff 보호</h3><p>non-lowest tier cutoff의 ±15 구간에는 배치하지 않고 cutoff−16으로 내려 경계 배치를 피합니다. 3 Stage에는 추가로 AQUA ceiling이 적용됩니다.</p></article></div></section><section className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">SAVE / RESUME</p><h2>중단 후 이어하기</h2></div><span>STATE PERSISTED</span></div><p>Stage Result에서 <b>PLAY LATER</b>를 선택하면 현재 Stage 결과가 서버에 저장되고, 이후 <b>CONTINUE PLACEMENT</b>로 이어서 진행할 수 있습니다. reconnect나 server restart 뒤에도 현재 Stage·Map·Attempt·result/finalization 상태를 복구하도록 설계되어 있습니다.</p></section></section>; }
 
-function tabFromHash() {
-  if (window.location.hash === "#ranking") return "ranking";
-  if (window.location.hash === "#info" || window.location.hash === "#pools") return "info";
-  return "list";
-}
-
+function tabFromHash() { if (window.location.hash === "#ranking") return "ranking"; if (window.location.hash === "#placement") return "placement"; if (window.location.hash === "#info" || window.location.hash === "#pools") return "info"; return "list"; }
 function App() {
-  const [tab, setTab] = useState(tabFromHash);
-  const { theme, toggleTheme } = useTheme();
-  const rankedMaps = useRankedMaps();
-  const leaderboard = useLeaderboard();
-  const information = useRankedInformation();
-  const changeTab = (value) => {
-    setTab(value);
-    history.replaceState(null, "", `#${value}`);
-    window.scrollTo({ top: 0, behavior: "auto" });
-  };
-  return <div className="site-shell"><div className="spectrum-line" /><header className="site-header-wrap"><div className="site-header"><div className="brand-cluster"><div className="brand"><span>CORUM</span><strong>RANKED</strong></div><ServerStatus loading={leaderboard.loading} error={leaderboard.error} serverOpen={leaderboard.serverOpen} /></div><div className="header-actions"><nav className="site-tabs" aria-label="사이트 메뉴"><button className={tab === "list" ? "active" : ""} onClick={() => changeTab("list")}><Icon name="list" />맵 리스트</button><button className={tab === "ranking" ? "active" : ""} onClick={() => changeTab("ranking")}><Icon name="rank" />순위</button><button className={tab === "info" ? "active" : ""} onClick={() => changeTab("info")}><Icon name="info" />정보</button></nav><button className="header-button" onClick={toggleTheme} aria-label={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}><Icon name={theme === "dark" ? "sun" : "moon"} /><span>{theme === "dark" ? "LIGHT" : "DARK"}</span></button><button className="header-button mod-button" disabled title="모드 다운로드 준비 중"><Icon name="download" /><span>모드</span></button></div></div></header><main className="content">{tab === "list" && <MapList {...rankedMaps} />}{tab === "ranking" && <Ranking {...leaderboard} />}{tab === "info" && <Information maps={rankedMaps.maps} mapsLoading={rankedMaps.loading} {...information} />}</main><footer className="footer"><div><strong>CORUM RANKED</strong><span>Official Ranked pool & leaderboard</span></div><span>DATA · SHEET2 + RANKED DB API</span></footer></div>;
+  const [tab, setTab] = useState(tabFromHash); const { theme, toggleTheme } = useTheme(); const rankedMaps = useRankedMaps(); const leaderboard = useLeaderboard(); const information = useRankedInformation();
+  const changeTab = (value) => { setTab(value); history.replaceState(null, "", `#${value}`); window.scrollTo({ top: 0, behavior: "auto" }); };
+  return <div className="site-shell"><div className="spectrum-line" /><header className="site-header-wrap"><div className="site-header"><div className="brand-cluster"><div className="brand"><span>CORUM</span><strong>RANKED</strong></div><ServerStatus loading={leaderboard.loading} error={leaderboard.error} serverOpen={leaderboard.serverOpen} /></div><div className="header-actions"><nav className="site-tabs" aria-label="사이트 메뉴"><button className={tab === "list" ? "active" : ""} onClick={() => changeTab("list")}><Icon name="list" />맵 리스트</button><button className={tab === "ranking" ? "active" : ""} onClick={() => changeTab("ranking")}><Icon name="rank" />순위</button><button className={tab === "info" || tab === "placement" ? "active" : ""} onClick={() => changeTab("info")}><Icon name="info" />정보</button></nav><button className="header-button" onClick={toggleTheme} aria-label={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}><Icon name={theme === "dark" ? "sun" : "moon"} /><span>{theme === "dark" ? "LIGHT" : "DARK"}</span></button><button className="header-button mod-button" disabled title="모드 다운로드 준비 중"><Icon name="download" /><span>모드</span></button></div></div></header><main className="content">{tab === "list" && <MapList {...rankedMaps} />}{tab === "ranking" && <Ranking {...leaderboard} />}{tab === "info" && <Information maps={rankedMaps.maps} mapsLoading={rankedMaps.loading} {...information} onOpenPlacement={() => changeTab("placement")} />}{tab === "placement" && <PlacementInformation onBack={() => changeTab("info")} />}</main><footer className="footer"><div><strong>CORUM RANKED</strong><span>Official Ranked pool & leaderboard</span></div><span>DATA · SHEET2 + RANKED DB API</span></footer></div>;
 }
 
 createRoot(document.getElementById("root")).render(<React.StrictMode><App /></React.StrictMode>);
