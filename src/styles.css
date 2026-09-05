@@ -318,6 +318,16 @@ tbody tr:hover { background: var(--panel-raised); }
 .player-name span { color: var(--muted); font-size: 8px; font-weight: 900; letter-spacing: 0.13em; }
 .player-status { min-width: 0; display: flex; align-items: center; gap: 10px; }
 .player-status small { max-width: 145px; color: var(--muted); font-size: 10px; font-weight: 750; line-height: 1.35; }
+.placement-stage-label { font-size: 0.95rem; letter-spacing: normal; }
+.placement-stage-progress { display: flex; flex-wrap: wrap; gap: 6px; }
+.placement-stage-progress span { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--line-strong); border-radius: 50%; font-size: 0.8rem; color: var(--muted); }
+.placement-stage-progress .is-complete { background: var(--ink); border-color: var(--ink); color: var(--panel); }
+.placement-stage-progress .is-current { border: 2px solid var(--ink); color: var(--ink); font-weight: 800; }
+.player-status.placement-player-status { flex-wrap: wrap; gap: 6px 10px; }
+.placement-player-status > small { flex-basis: 100%; max-width: none; font-size: 0.875rem; line-height: 1.5; }
+.placement-player-status .placement-stage-progress { flex-basis: 100%; }
+.unranked-list .placement-record { font-size: 0.875rem; white-space: normal; }
+
 .lp-value, .series-marks { color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 18px; font-weight: 900; letter-spacing: 0.03em; }
 .series-marks { letter-spacing: 0.14em; }
 .player-status .warning-label { padding: 5px 7px; border: 1px solid rgba(255, 86, 86, 0.35); border-radius: 999px; background: rgba(255, 86, 86, 0.09); color: #ff5656; white-space: nowrap; }

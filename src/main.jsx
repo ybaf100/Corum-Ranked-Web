@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import "./placement.css";
+import { csvObjects, normalizeLeaderboard, loadRankedMaps, fetchText, placementDisplay } from "./ranked-data.js";
 
 const SHEET_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRzHKOAa1pnP8TCB3d22TZwM5G3BgQSZhiFloApWA6mMptX6PdU_q6bKj8fs9IhpujO9WZ8Cln7e6vW/pub";
 const SHEET2_CSV_URL = `${SHEET_BASE}?gid=1963044442&single=true&output=csv`;
@@ -74,34 +75,6 @@ function Icon({ name }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" {...common} /><path d="m16 16 4 4" {...common} /></svg>;
 }
 
-function normalizeHeader(value) { return String(value || "").replace(/^\uFEFF/, "").replace(/\s+/g, " ").trim(); }
-function parseCsv(text) {
-  const rows = []; let row = []; let cell = ""; let quoted = false;
-  for (let i = 0; i < text.length; i += 1) {
-    const c = text[i]; const next = text[i + 1];
-    if (c === '"' && quoted && next === '"') { cell += '"'; i += 1; }
-    else if (c === '"') quoted = !quoted;
-    else if (c === "," && !quoted) { row.push(cell); cell = ""; }
-    else if ((c === "\n" || c === "\r") && !quoted) {
-      if (c === "\r" && next === "\n") i += 1;
-      row.push(cell); if (row.some((v) => v.trim())) rows.push(row); row = []; cell = "";
-    } else cell += c;
-  }
-  row.push(cell); if (row.some((v) => v.trim())) rows.push(row); return rows;
-}
-function csvObjects(text) {
-  const rows = parseCsv(text); if (rows.length < 2) return [];
-  const headers = rows[0].map(normalizeHeader);
-  return rows.slice(1).map((values) => Object.fromEntries(headers.map((header, index) => [header, String(values[index] || "").trim()])));
-}
-function parseRankedMaps(csv) {
-  return csvObjects(csv).flatMap((row) => {
-    const title = row["맵 제목"]; const difficulty = row.Rating; const mapCode = row["대체 맵 코드"];
-    const poolValue = Number(row["Ranked Pool (1~6)"]); const pool = Number.isInteger(poolValue) && poolValue >= 1 && poolValue <= 6 ? poolValue : null;
-    const qualifyingPercent = String(row["Qualifying %"] || "").replace(/%$/, "");
-    return title && difficulty && mapCode ? [{ title, difficulty, mapCode, pool, qualifyingPercent }] : [];
-  });
-}
 function parseTierRules(csv) {
   return csvObjects(csv).flatMap((row) => {
     const tier = String(row.Tier || "").toUpperCase(); const minimum = Number(row["최소 점수(포함)"]); const maximumText = row["최대 점수(미포함)"];
@@ -113,15 +86,6 @@ function parseRankedConfig(csv) {
   const config = {};
   csvObjects(csv).forEach((row) => { const key = row.Key || row.key || Object.values(row)[0]; const raw = row.Value ?? row.value ?? Object.values(row)[1]; if (key) config[key] = raw !== "" && Number.isFinite(Number(raw)) ? Number(raw) : raw; });
   return config;
-}
-function normalizeMarks(value) { return Array.isArray(value) ? value.filter((mark) => mark === "WIN" || mark === "LOSS") : []; }
-function normalizeLeaderboard(payload) {
-  const players = (Array.isArray(payload?.players) ? payload.players : []).flatMap((value) => {
-    const player = String(value?.player || "").trim(); const tier = String(value?.tier || "UNRANKED").toUpperCase(); if (!player || !TIER_ORDER.includes(tier)) return [];
-    const promotion = value.promotion && typeof value.promotion === "object" ? { sourceTier: String(value.promotion.sourceTier || tier).toUpperCase(), targetTier: String(value.promotion.targetTier || "").toUpperCase(), gamesRequired: Math.max(0, Number(value.promotion.gamesRequired) || 0), winsRequired: Math.max(0, Number(value.promotion.winsRequired) || 0), results: normalizeMarks(value.promotion.results) } : null;
-    return [{ player, tier, visibleRankedScore: value.visibleRankedScore === null ? null : Number(value.visibleRankedScore), placementGames: Math.max(0, Number(value.placementGames) || 0), placementGamesRequired: value.placementGamesRequired == null ? null : Math.max(0, Number(value.placementGamesRequired) || 0), placementResults: normalizeMarks(value.placementResults), promotion, demotionWarning: Boolean(value.demotionWarning), wins: Math.max(0, Number(value.wins) || 0), losses: Math.max(0, Number(value.losses) || 0) }];
-  });
-  return { players, serverOpen: payload?.serverOpen === true };
 }
 function difficultyIndex(value) { return DIFFICULTY_ORDER.indexOf(/^20(?:\.0+)?$/.test(value) ? "20.0" : value); }
 function difficultyTextColor(value) {
@@ -147,14 +111,13 @@ function useTheme() {
 }
 function useRemoteData(loader) {
   const [state, setState] = useState({ data: null, loading: true, error: "" }); const [reloadKey, setReloadKey] = useState(0);
-  useEffect(() => { const controller = new AbortController(); setState((current) => ({ ...current, loading: true, error: "" })); loader(controller.signal).then((data) => setState({ data, loading: false, error: "" })).catch((reason) => { if (!controller.signal.aborted) setState({ data: null, loading: false, error: reason instanceof Error ? reason.message : "데이터를 불러오지 못했습니다." }); }); return () => controller.abort(); }, [reloadKey]);
+  useEffect(() => { const controller = new AbortController(); setState((current) => ({ ...current, loading: true, error: "" })); loader(controller.signal).then((data) => { if (!controller.signal.aborted) setState({ data, loading: false, error: "" }); }).catch((reason) => { if (!controller.signal.aborted) setState({ data: null, loading: false, error: reason instanceof Error ? reason.message : "데이터를 불러오지 못했습니다." }); }); return () => controller.abort(); }, [reloadKey]);
   return { ...state, reload: () => setReloadKey((value) => value + 1) };
 }
-async function fetchText(url, signal) {
-  const requestSignal = typeof AbortSignal.any === "function" && typeof AbortSignal.timeout === "function" ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : signal;
-  const response = await fetch(`${url}&v=${Date.now()}`, { cache: "no-store", signal: requestSignal }); if (!response.ok) throw new Error(`요청 실패 (${response.status})`); return response.text();
+function useRankedMaps() {
+  const remote = useRemoteData((signal) => loadRankedMaps(`${RANKED_API_URL}/api/ranked/maps`, SHEET2_CSV_URL, signal));
+  return { ...remote, maps: remote.data || [] };
 }
-function useRankedMaps() { const remote = useRemoteData(async (signal) => parseRankedMaps(await fetchText(SHEET2_CSV_URL, signal))); return { ...remote, maps: remote.data || [] }; }
 function useLeaderboard() {
   const remote = useRemoteData(async (signal) => { const requestSignal = typeof AbortSignal.any === "function" && typeof AbortSignal.timeout === "function" ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : signal; const response = await fetch(`${LEADERBOARD_URL}?v=${Date.now()}`, { cache: "no-store", signal: requestSignal }); if (!response.ok) throw new Error(`Ranked 서버 요청 실패 (${response.status})`); return normalizeLeaderboard(await response.json()); });
   return { ...remote, players: remote.data?.players || [], serverOpen: remote.data?.serverOpen === true };
@@ -169,17 +132,20 @@ function StateCard({ type, title, description, action }) { return <div className
 function MapList({ maps, loading, error, reload }) {
   const [query, setQuery] = useState(""); const [poolFilter, setPoolFilter] = useState("all"); const assignedMaps = useMemo(() => maps.filter((map) => map.pool !== null), [maps]); const unassignedCount = maps.length - assignedMaps.length;
   const filteredMaps = useMemo(() => { const q = query.trim().toLocaleLowerCase(); return assignedMaps.filter((map) => (!q || map.title.toLocaleLowerCase().includes(q) || map.mapCode.toLocaleLowerCase().includes(q)) && (poolFilter === "all" || map.pool === Number(poolFilter))).sort((a, b) => a.pool - b.pool || difficultyIndex(b.difficulty) - difficultyIndex(a.difficulty) || a.title.localeCompare(b.title, "ko")); }, [assignedMaps, poolFilter, query]);
-  return <section className="tab-page"><div className="page-heading"><div><p className="section-kicker">SHEET2 / LIVE MAP DATA</p><h1>Ranked Map Pool</h1><p>현재 Ranked에 배정된 맵과 경기 진입 기준을 확인합니다.</p></div><div className="total-counter"><span>ACTIVE MAPS</span><strong>{loading ? "—" : assignedMaps.length}</strong></div></div><div className="list-toolbar"><label className="search-shell"><Icon name="search" /><span className="sr-only">맵 검색</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="맵 제목 또는 맵 코드 검색" /></label><select className="pool-select" value={poolFilter} onChange={(event) => setPoolFilter(event.target.value)} aria-label="Ranked Pool 필터"><option value="all">전체 Pool</option>{POOLS.map((pool) => <option value={pool} key={pool}>Pool {pool}</option>)}</select><button className="reload-button" type="button" onClick={reload} disabled={loading}><Icon name="refresh" />새로고침</button></div>{error ? <StateCard type="error" title="sheet2를 불러오지 못했습니다." description={error} action={<button className="primary-button" onClick={reload}>다시 시도</button>} /> : loading ? <div className="map-list" aria-busy="true">{Array.from({ length: 7 }, (_, index) => <div className="map-row skeleton-row" key={index}><i /><i /><i /><i /><i /></div>)}</div> : filteredMaps.length ? <><div className="result-line"><span>{filteredMaps.length} MAPS</span>{unassignedCount > 0 && <small>Pool 미배정 {unassignedCount}개는 목록에서 제외됨</small>}</div><div className="map-list"><div className="map-list-head" aria-hidden="true"><span>POOL</span><span>MAP</span><span>DIFFICULTY</span><span>MAP CODE</span><span>QUALIFYING</span></div>{filteredMaps.map((map) => <article className={`map-row pool-${map.pool}`} key={`${map.mapCode}-${map.title}`}><div className="pool-mark"><span>POOL</span><strong>{map.pool}</strong></div><div className="map-title"><h2>{map.title}</h2><span>RANKED MAP</span></div><DifficultyBadge value={map.difficulty} /><div className="map-code"><span>맵 코드</span><strong>{map.mapCode}</strong></div><div className="qualifying"><span>QUALIFYING</span><strong>{map.qualifyingPercent ? `${map.qualifyingPercent}%` : "—"}</strong></div></article>)}</div></> : <StateCard title={assignedMaps.length ? "검색 결과가 없습니다." : "배정된 맵이 없습니다."} description={assignedMaps.length ? "검색어나 Pool 필터를 변경해 보세요." : "sheet2의 Ranked Pool (1~6) 열에 Pool 값을 입력하면 여기에 표시됩니다."} />}</section>;
+  return <section className="tab-page"><div className="page-heading"><div><p className="section-kicker">SHEET2 / LIVE MAP DATA</p><h1>Ranked Map Pool</h1><p>현재 Ranked에 배정된 맵과 경기 진입 기준을 확인합니다.</p></div><div className="total-counter"><span>ACTIVE MAPS</span><strong>{loading ? "—" : assignedMaps.length}</strong></div></div><div className="list-toolbar"><label className="search-shell"><Icon name="search" /><span className="sr-only">맵 검색</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="맵 제목 또는 맵 코드 검색" /></label><select className="pool-select" value={poolFilter} onChange={(event) => setPoolFilter(event.target.value)} aria-label="Ranked Pool 필터"><option value="all">전체 Pool</option>{POOLS.map((pool) => <option value={pool} key={pool}>Pool {pool}</option>)}</select><button className="reload-button" type="button" onClick={reload} disabled={loading}><Icon name="refresh" />새로고침</button></div>{error ? <StateCard type="error" title="맵 목록을 불러오지 못했습니다." description={error} action={<button className="primary-button" onClick={reload}>다시 시도</button>} /> : loading ? <div className="map-list" aria-busy="true">{Array.from({ length: 7 }, (_, index) => <div className="map-row skeleton-row" key={index}><i /><i /><i /><i /><i /></div>)}</div> : filteredMaps.length ? <><div className="result-line"><span>{filteredMaps.length} MAPS</span>{unassignedCount > 0 && <small>Pool 미배정 {unassignedCount}개는 목록에서 제외됨</small>}</div><div className="map-list"><div className="map-list-head" aria-hidden="true"><span>POOL</span><span>MAP</span><span>DIFFICULTY</span><span>MAP CODE</span><span>QUALIFYING</span></div>{filteredMaps.map((map) => <article className={`map-row pool-${map.pool}`} key={`${map.mapCode}-${map.title}`}><div className="pool-mark"><span>POOL</span><strong>{map.pool}</strong></div><div className="map-title"><h2>{map.title}</h2><span>RANKED MAP</span></div><DifficultyBadge value={map.difficulty} /><div className="map-code"><span>맵 코드</span><strong>{map.mapCode}</strong></div><div className="qualifying"><span>QUALIFYING</span><strong>{map.qualifyingPercent ? `${map.qualifyingPercent}%` : "—"}</strong></div></article>)}</div></> : <StateCard title={assignedMaps.length ? "검색 결과가 없습니다." : "배정된 맵이 없습니다."} description={assignedMaps.length ? "검색어나 Pool 필터를 변경해 보세요." : "sheet2의 Ranked Pool (1~6) 열에 Pool 값을 입력하면 여기에 표시됩니다."} />}</section>;
 }
 
 function formatMarks(results, required) { const known = Number.isFinite(required) && required > 0; const length = known ? required : results.length; const marks = results.slice(0, length).map((result) => result === "WIN" ? "O" : "X"); return `${marks.join("")}${"-".repeat(Math.max(0, length - marks.length))}` || "—"; }
 function formatWinRate(player) { const total = player.wins + player.losses; if (!total) return "0"; const rate = player.wins / total * 100; return Number.isInteger(rate) ? String(rate) : rate.toFixed(1); }
 function PlayerStatus({ player }) {
-  if (player.tier === "UNRANKED" || player.visibleRankedScore === null) return <div className="player-status"><TierBadge tier="UNRANKED" /><strong className="series-marks">{formatMarks(player.placementResults, player.placementGamesRequired)}</strong><small>배치 진행 중</small></div>;
+  if (player.tier === "UNRANKED" || player.visibleRankedScore === null) {
+    const status = placementDisplay(player.placement);
+    return <div className="player-status placement-player-status"><TierBadge tier="UNRANKED" /><strong className="placement-stage-label">{status.title}</strong><small>{status.detail}</small>{status.totalStages && <div className="placement-stage-progress" aria-label={`${status.completedStages} / ${status.totalStages} Stage 완료`}>{Array.from({ length: status.totalStages }, (_, index) => <span key={index} className={index < status.completedStages ? "is-complete" : index + 1 === status.currentStageIndex ? "is-current" : ""} aria-hidden="true">{index < status.completedStages ? "✓" : index + 1}</span>)}</div>}</div>;
+  }
   if (player.promotion) return <div className="player-status"><TierBadge tier={player.promotion.sourceTier} /><strong className="series-marks">{formatMarks(player.promotion.results, player.promotion.gamesRequired)}</strong><small>{player.promotion.targetTier} 승급전 · {player.promotion.winsRequired}승 필요</small></div>;
   return <div className="player-status"><TierBadge tier={player.tier} /><strong className="lp-value">{Number.isFinite(player.visibleRankedScore) ? player.visibleRankedScore.toLocaleString() : "—"} LP</strong>{player.demotionWarning && <small className="warning-label">강등 경고</small>}</div>;
 }
-function RankingRows({ players, rankedPlayers, unranked = false }) { return <div className={`ranking-list${unranked ? " unranked-list" : ""}`}><div className="ranking-head" aria-hidden="true"><span>{unranked ? "GROUP" : "RANK"}</span><span>PLAYER</span><span>TIER / STATUS</span><span>RECORD</span></div>{players.map((player) => { const rank = unranked ? null : rankedPlayers.indexOf(player) + 1; return <article className={`ranking-row${unranked ? " unranked-row" : ""}`} key={`${player.player}-${rank ?? "unranked"}`}><strong className="rank-number">{rank === null ? "—" : String(rank).padStart(2, "0")}</strong><div className="player-name"><strong>{player.player}</strong><span>{unranked ? "PLACEMENT PLAYER" : "RANKED PLAYER"}</span></div><PlayerStatus player={player} /><div className={`record-line${unranked ? " placement-record" : ""}`}>{unranked ? <span>배치 진행 중</span> : <><strong>{player.wins} <small>wins</small></strong><strong>{player.losses} <small>lose</small></strong><b>({formatWinRate(player)}%)</b></>}</div></article>; })}</div>; }
+function RankingRows({ players, rankedPlayers, unranked = false }) { return <div className={`ranking-list${unranked ? " unranked-list" : ""}`}><div className="ranking-head" aria-hidden="true"><span>{unranked ? "GROUP" : "RANK"}</span><span>PLAYER</span><span>TIER / STATUS</span><span>{unranked ? "PROGRESS" : "RECORD"}</span></div>{players.map((player) => { const rank = unranked ? null : rankedPlayers.indexOf(player) + 1; return <article className={`ranking-row${unranked ? " unranked-row" : ""}`} key={`${player.player}-${rank ?? "unranked"}`}><strong className="rank-number">{rank === null ? "—" : String(rank).padStart(2, "0")}</strong><div className="player-name"><strong>{player.player}</strong><span>{unranked ? "PLACEMENT PLAYER" : "RANKED PLAYER"}</span></div><PlayerStatus player={player} /><div className={`record-line${unranked ? " placement-record" : ""}`}>{unranked ? <span>{placementDisplay(player.placement).progress}</span> : <><strong>{player.wins} <small>wins</small></strong><strong>{player.losses} <small>lose</small></strong><b>({formatWinRate(player)}%)</b></>}</div></article>; })}</div>; }
 function Ranking({ players, loading, error, reload }) {
   const [query, setQuery] = useState(""); const rankedPlayers = useMemo(() => players.filter((player) => player.tier !== "UNRANKED" && player.visibleRankedScore !== null), [players]); const unrankedPlayers = useMemo(() => players.filter((player) => player.tier === "UNRANKED" || player.visibleRankedScore === null), [players]); const q = query.trim().toLocaleLowerCase(); const rankedFiltered = useMemo(() => rankedPlayers.filter((player) => player.player.toLocaleLowerCase().includes(q)), [rankedPlayers, q]); const unrankedFiltered = useMemo(() => unrankedPlayers.filter((player) => player.player.toLocaleLowerCase().includes(q)), [unrankedPlayers, q]); const hasResults = rankedFiltered.length + unrankedFiltered.length > 0;
   return <section className="tab-page"><div className="page-heading"><div><p className="section-kicker">RANKED DATABASE / PUBLIC DATA</p><h1>Leaderboard</h1><p>LP, 티어, 승·패 전적과 배치·승급전 상태를 표시합니다. Hidden MMR은 공개되지 않습니다.</p></div><div className="total-counter"><span>PLAYERS</span><strong>{loading ? "—" : players.length}</strong></div></div><div className="list-toolbar ranking-toolbar"><label className="search-shell"><Icon name="search" /><span className="sr-only">플레이어 검색</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="플레이어 이름 검색" /></label><button className="reload-button" type="button" onClick={reload} disabled={loading}><Icon name="refresh" />새로고침</button></div>{error ? <StateCard type="error" title="순위 정보를 불러오지 못했습니다." description={`${error} · 공개 순위 API와 CORS 설정을 확인하세요.`} action={<button className="primary-button" onClick={reload}>다시 시도</button>} /> : loading ? <div className="ranking-list" aria-busy="true">{Array.from({ length: 6 }, (_, index) => <div className="ranking-row ranking-skeleton" key={index}><i /><i /><i /><i /></div>)}</div> : hasResults ? <>{rankedFiltered.length > 0 && <RankingRows players={rankedFiltered} rankedPlayers={rankedPlayers} />}{unrankedFiltered.length > 0 && <div className="unranked-section"><div className="unranked-heading"><div><p className="section-kicker">PLACEMENT GROUP</p><h2>Unranked</h2></div><span>{unrankedFiltered.length} PLAYERS</span></div><RankingRows players={unrankedFiltered} rankedPlayers={rankedPlayers} unranked /></div>}</> : <StateCard title={players.length ? "검색 결과가 없습니다." : "표시할 플레이어가 없습니다."} description={players.length ? "플레이어 이름을 다시 확인하세요." : "Ranked DB에 플레이어가 생기면 여기에 표시됩니다."} />}</section>;

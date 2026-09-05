@@ -1,8 +1,18 @@
-# Corum Ranked Official Site v1.3.0
+# Corum Ranked Official Site v1.4.1
 
 Corum Ranked의 맵 풀, 공개 플레이어 순위와 운영 규칙을 보여주는 공식 사이트입니다.
 
-## 이번 버전
+## v1.4.1 수정
+
+- 순위의 배치 표시를 과거 PvP 승패 마크에서 서버가 제공하는 3/5 Stage 진행으로 변경했습니다.
+- 현재 Stage/Map, 완료 Map 수, Stage 결과 대기와 시작 전 상태를 표시합니다.
+- 기존 API만 제공되는 동안에는 `배치 미완료 / 상세 진행 정보 없음`으로 표시하며 Stage 수를 추측하지 않습니다.
+- 맵 목록은 서버의 공개 `GET /api/ranked/maps`에서 먼저 읽고, 이용할 수 없으면 원래 sheet2 CSV로 전환합니다.
+- Google CSV는 리다이렉트를 포함해 30초가량 걸리는 응답을 수용하도록 45초까지 기다립니다. 매번 달라지는 URL 쿼리를 제거했습니다.
+- 최신 진행 표시와 서버 맵 조회를 사용하려면 Corum-Ranked 서버의 공개 데이터 패치도 함께 배포해야 합니다. 서버 → Web 순서로 반영하는 것을 권장합니다.
+- 검증: `npm test`, `npm run build`.
+
+## 현재 기능
 
 - `맵 리스트`: sheet2의 맵 제목, 난이도, 맵 코드, Ranked Pool, Qualifying %
 - `순위`: 플레이어 이름, 티어/LP, 승급전·배치 상태, 승/패, 승률
@@ -12,7 +22,7 @@ Corum Ranked의 맵 풀, 공개 플레이어 순위와 운영 규칙을 보여�
 - `정보`: 티어별 LP 커트, 승급전 판수/필요 승수, 승급·강등 규칙, 풀 구성
 - 정보 탭에 Bo3 경기 흐름, 5분 라운드, Final/LAST Attempt, 3-Clear,
   Death Match와 Attempt 점수를 설명하는 `진행 방식` 섹션 추가
-- 정보 탭의 Placement/승급 성공/승급 실패/강등 요약 카드 제거
+- 정보 탭의 Placement 요약에서 별도 `#placement` 상세 화면으로 이동 (상단 3개 메뉴 유지)
 - 다크 모드 유지
 - 모드 다운로드 버튼 비활성화 유지
 - GitHub Pages 배포 workflow 포함
@@ -61,5 +71,5 @@ VITE_RANKED_API_URL=https://your-ranked-server.example
 
 - sheet2: 맵 목록
 - Ranked Tiers: 티어 커트, 메인/데스매치 풀, 승급전 판수와 필요 승수
-- Ranked Config: 배치 판수와 승급·강등 LP 보정값
-- Ranked DB 공개 API: 플레이어 공개 상태와 전적
+- Ranked Config: 승급·강등 LP 보정값 (legacy 배치 판수를 Stage 수로 사용하지 않음)
+- Ranked 공개 API: 플레이어 공개 상태·전적·Solo Stage 진행, 검증된 sheet2 맵 스냅샷
