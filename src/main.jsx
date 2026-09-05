@@ -144,7 +144,7 @@ function MapList({ maps, loading, error, reload }) {
   const filteredMaps = useMemo(() => {
     const q = query.trim().toLocaleLowerCase();
     return assignedMaps.filter((map) => (!q || map.title.toLocaleLowerCase().includes(q) || map.mapCode.toLocaleLowerCase().includes(q)) && (poolFilter === "all" || map.pool === Number(poolFilter)))
-      .sort((a, b) => a.pool - b.pool || difficultyIndex(b.difficulty) - difficultyIndex(a.difficulty) || a.title.localeCompare(b.title, "ko"));
+      .sort((a, b) => a.pool - b.pool || difficultyIndex(a.difficulty) - difficultyIndex(b.difficulty) || a.title.localeCompare(b.title, "ko"));
   }, [assignedMaps, poolFilter, query]);
   return <section className="tab-page maps-page">
     <PageHeading number="01" label="COMPETITIVE MAPS" title="Map index" description="맵을 고르고, 다음 도전을 준비하세요." count={loading || error ? "—" : assignedMaps.length} countLabel="ACTIVE MAPS" />

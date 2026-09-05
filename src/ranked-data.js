@@ -1,5 +1,10 @@
 const TIER_ORDER = ["UNRANKED", "RED", "AQUA", "BRONZE", "SILVER", "GOLD"];
 
+function normalizeDifficulty(value) {
+  const difficulty = String(value ?? "").trim();
+  return /^20(?:\.0+)?$/.test(difficulty) ? "20.0" : difficulty;
+}
+
 function normalizeHeader(value) { return String(value || "").replace(/^\uFEFF/, "").replace(/\s+/g, " ").trim(); }
 function parseCsv(text) {
   const rows = []; let row = []; let cell = ""; let quoted = false;
@@ -24,7 +29,7 @@ export function parseRankedMaps(csv) {
   const headers = (parseCsv(csv)[0] || []).map(normalizeHeader);
   if (!["맵 제목", "Rating", "대체 맵 코드", "Ranked Pool (1~6)", "Qualifying %"].every((name) => headers.includes(name))) throw new Error("공개 시트의 맵 목록 형식이 올바르지 않습니다.");
   return csvObjects(csv).flatMap((row) => {
-    const title = row["맵 제목"]; const difficulty = row.Rating; const mapCode = row["대체 맵 코드"];
+    const title = row["맵 제목"]; const difficulty = normalizeDifficulty(row.Rating); const mapCode = row["대체 맵 코드"];
     const poolValue = Number(row["Ranked Pool (1~6)"]); const pool = Number.isInteger(poolValue) && poolValue >= 1 && poolValue <= 6 ? poolValue : null;
     const qualifyingPercent = String(row["Qualifying %"] || "").replace(/%$/, "");
     return title && difficulty && mapCode ? [{ title, difficulty, mapCode, pool, qualifyingPercent }] : [];
@@ -95,7 +100,7 @@ export function normalizePublicMaps(payload) {
   if (!Array.isArray(payload?.maps)) throw new Error("맵 목록 응답 형식이 올바르지 않습니다.");
   return payload.maps.map((map) => {
     const title = String(map?.title || "").trim();
-    const difficulty = String(map?.difficulty ?? "").trim();
+    const difficulty = normalizeDifficulty(map?.difficulty);
     const mapCode = String(map?.mapCode || "").trim();
     const pool = map?.pool;
     const qualifying = map?.qualifyingPercent;

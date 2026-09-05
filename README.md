@@ -1,6 +1,11 @@
-# Corum Ranked Official Site v1.5.0
+# Corum Ranked Official Site v1.5.1
 
 Corum Ranked의 맵 풀, 공개 플레이어 순위와 운영 규칙을 보여주는 공식 사이트입니다.
+
+## v1.5.1 맵 난이도 표시·정렬
+
+- API와 sheet2 CSV의 난이도 `20`은 `20.0`으로 통일해 표시와 배지 색상에 사용합니다.
+- Pool 순서를 유지하며, 같은 Pool 안에서는 난이도가 낮은 맵부터 높은 맵 순서로 표시합니다. 같은 난이도에서는 기존 제목순을 유지합니다.
 
 ## v1.5.0 디자인 개편
 
