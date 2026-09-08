@@ -35,7 +35,7 @@ const MATCH_FLOW = [
   { step: "02", eyebrow: "OPENING", title: "Round 1", description: "첫 번째 맵에서 일반 라운드를 진행합니다. 결과와 관계없이 Round 2로 이동합니다." },
   { step: "03", eyebrow: "MATCH POINT", title: "Round 2", description: "두 라운드 후 승수가 다르면 매치가 끝나고, 같으면 Round 3으로 이동합니다." },
   { step: "04", eyebrow: "TIEBREAKER", title: "Round 3", description: "비무승부면 최종 승자가 정해지고, 라운드 무승부면 Death Match로 이동합니다." },
-  { step: "05", eyebrow: "IF TIED", title: "Death Match", description: "각자 정확히 3 Attempts의 합산 점수를 비교합니다. 동점이면 새 맵으로 반복합니다." },
+  { step: "05", eyebrow: "IF TIED", title: "Death Match", description: "각자 정확히 3 scored Attempts 중 authoritative raw progress percentage의 최고값 1개를 비교합니다. Qualifying %와 일반 Attempt 점수 배율은 적용하지 않으며 Clear는 100%입니다. 최고 진행률이 같으면 새 맵으로 반복합니다." },
 ];
 
 const ROUND_RULES = [
