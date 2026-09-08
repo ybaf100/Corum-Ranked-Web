@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import "./placement.css";
+import { Reveal, Disclosure, scrollToSection, useStickyOffsets } from "./motion.jsx";
 import { csvObjects, normalizeLeaderboard, loadRankedMaps, fetchText, placementDisplay } from "./ranked-data.js";
 
 const SHEET_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRzHKOAa1pnP8TCB3d22TZwM5G3BgQSZhiFloApWA6mMptX6PdU_q6bKj8fs9IhpujO9WZ8Cln7e6vW/pub";
@@ -106,7 +107,7 @@ function getInitialTheme() {
 }
 function useTheme() {
   const [theme, setTheme] = useState(getInitialTheme);
-  useEffect(() => { document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#101214" : "#f2f4f5"); try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch (_) {} }, [theme]);
+  useEffect(() => { document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#080a0e" : "#f5f5f7"); try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch (_) {} }, [theme]);
   return { theme, toggleTheme: () => setTheme((value) => value === "dark" ? "light" : "dark") };
 }
 function useRemoteData(loader) {
@@ -222,22 +223,121 @@ function Ranking({ players, loading, error, reload }) {
   </section>;
 }
 
-function MatchProgression() { return <section className="match-format-section" aria-labelledby="match-format-title"><div className="composition-title-line match-format-title"><div><p className="section-kicker">HOW RANKED WORKS</p><h2 id="match-format-title">진행 방식</h2></div><span>BEST OF 3</span></div><ol className="match-flow-grid">{MATCH_FLOW.map((phase, index) => <li className={`match-flow-step${index === MATCH_FLOW.length - 1 ? " conditional-step" : ""}`} key={phase.step}><div className="flow-marker"><span>{phase.step}</span><i aria-hidden="true" /></div><p>{phase.eyebrow}</p><h3>{phase.title}</h3><small>{phase.description}</small></li>)}</ol><div className="round-rule-grid">{ROUND_RULES.map((rule) => <article className="round-rule-card" key={rule.label}><div><strong>{rule.value}</strong><span>{rule.label}</span></div><h3>{rule.title}</h3><p>{rule.description}</p></article>)}</div><div className="score-rule-shell"><div className="score-rule-heading"><div><p className="section-kicker">ROUND SCORING</p><h3>Attempt 점수</h3></div><p>맵별 Qualifying 기준을 통과한 뒤 구간별 배율을 적용합니다.</p></div><div className="score-rule-grid">{SCORE_RULES.map((rule) => <div className="score-rule" key={rule.range}><span>{rule.range}</span><strong>{rule.score}</strong><small>{rule.detail}</small></div>)}</div></div><div className="authority-note"><span>SERVER AUTHORITATIVE</span><p>시간, Attempt 승인, 점수, Clear, 라운드와 최종 승자는 Ranked 서버가 판정합니다. 최종 매치 draw는 없고 승자가 나올 때까지 Death Match가 반복됩니다.</p></div></section>; }
-
-function RankedPolicyOverview() { return <section className="ranked-policy-grid"><article><p className="section-kicker">HIDDEN MMR / VISIBLE LP</p><h2>MMR과 LP</h2><p>Hidden MMR은 매칭과 LP 보정에 사용되지만 공개되지 않습니다. MMR이 현재 LP보다 높으면 승리 시 더 많이 오르고 패배 시 덜 내려가며, 낮으면 반대로 적용됩니다. 상대의 강약도 함께 반영됩니다.</p></article><article><p className="section-kicker">PERFECT WIN</p><h2>Perfect Win</h2><p>최종 승자가 한 Round도 패배하지 않고, 모든 결정 승리를 실제 3-Clear로 만든 경우에만 인정됩니다. Round draw는 허용되지만 score win, forfeit, forced win, Death Match 승리는 조건을 만족하지 않습니다.</p></article><article><p className="section-kicker">PROMOTION</p><h2>승급전</h2><p>예상 승리 LP가 다음 cutoff에 닿기 전에 LP를 cutoff−1에 고정하고 승급전을 시작합니다. 승급전 중에도 Hidden MMR과 streak는 계속 변하며, 필요한 판수와 승수는 운영 시트의 티어 설정을 따릅니다.</p></article></section>; }
-
-function PlacementSummary({ onOpenPlacement }) { return <section className="placement-summary"><div><p className="section-kicker">SOLO STAGE PLACEMENT</p><h2>배치 경기</h2><p>현재 Placement는 PvP가 아니라 싱글플레이 Stage 방식입니다. 3 Stage 또는 5 Stage를 선택하고, Stage마다 서로 다른 2개 맵을 플레이해 Map Score와 Grade를 쌓습니다.</p><div className="placement-summary-facts"><span><strong>3 / 5</strong> STAGES</span><span><strong>2</strong> MAPS / STAGE</span><span><strong>3:00</strong> MAP TIME</span><span><strong>2</strong> CLEAR TARGET</span></div></div><button className="placement-detail-button" type="button" onClick={onOpenPlacement}>자세히 보기 <Icon name="arrow" /></button></section>; }
-
-function Information({ maps, mapsLoading, tiers, config, loading, error, reload, onOpenPlacement }) {
-  const poolCounts = useMemo(() => POOLS.map((pool) => maps.filter((map) => map.pool === pool).length), [maps]); const demotionPenalty = Number(config.demotionScorePenalty) || 0;
-  return <section className="tab-page information-page"><PageHeading number="03" label="RULES & FORMAT" title="The rulebook" description="첫 매칭부터 승급까지. 플레이에 필요한 모든 기준." action={<button className="reload-button" type="button" aria-label="데이터 새로고침" onClick={reload} disabled={loading}><Icon name="refresh" />정보 새로고침</button>} /><MatchProgression /><RankedPolicyOverview /><PlacementSummary onOpenPlacement={onOpenPlacement} />{error ? <StateCard type="error" title="운영 정보를 불러오지 못했습니다." description={error} action={<button className="primary-button" onClick={reload}>다시 시도</button>} /> : <><div className="info-section-shell"><div className="composition-title-line"><div><p className="section-kicker">TIER BANDS</p><h2>티어 커트 · 승급전</h2></div><span>운영 시트 실시간</span></div><div className="table-scroll"><table className="tier-rule-table"><thead><tr><th>티어</th><th>LP 구간</th><th>승급</th><th>Main Pool</th><th>Deathmatch Pool</th></tr></thead><tbody>{loading ? <tr><td colSpan="5">불러오는 중…</td></tr> : tiers.map((tier, index) => { const target = tiers[index + 1]?.tier; return <tr key={tier.tier}><td><TierBadge tier={tier.tier} /></td><td><strong>{tier.minimum.toLocaleString()} ~ {tier.maximum === null ? "∞" : (tier.maximum - 1).toLocaleString()} LP</strong></td><td>{target ? <><strong>{tier.tier} → {target}</strong><small>{tier.promotionGames}전 {tier.promotionWinsRequired}승</small></> : <strong>최상위 티어</strong>}</td><td>Pool {tier.mainPool}</td><td>Pool {tier.deathmatchPool}</td></tr>; })}</tbody></table></div></div><div className="demotion-panel"><div><p className="section-kicker">DEMOTION POLICY</p><h2>강등 조건</h2></div><ol><li>패배 예상 LP가 현재 tier floor 아래면 먼저 LP를 floor에 고정합니다.</li><li>Hidden MMR이 floor 이상이면 경고 없이 floor를 유지합니다. Hidden MMR도 floor 미만이면 첫 qualifying loss에서 <strong>DEMOTION WARNING</strong>이 켜집니다.</li><li>경고 상태에서 다음 qualifying loss가 발생하면 강등됩니다.{demotionPenalty ? <> 기본 운영값은 새 tier 기준 <strong>{demotionPenalty} LP</strong> penalty를 사용합니다.</> : null} 승리하면 경고가 해제됩니다.</li></ol></div><div className="pool-count-strip">{POOLS.map((pool, index) => <div className={`pool-count pool-${pool}`} key={pool}><span>POOL {pool}</span><strong>{mapsLoading ? "—" : poolCounts[index]}</strong><small>등록 맵</small></div>)}</div><div className="composition-table-shell"><div className="composition-title-line"><div><p className="section-kicker">5 MAP CANDIDATES</p><h2>Main Pool별 후보 분포</h2></div><span>합계 5개</span></div><div className="table-scroll"><table><thead><tr><th>티어</th><th>Main</th>{POOLS.map((pool) => <th key={pool}>Pool {pool}</th>)}<th>합계</th></tr></thead><tbody>{loading ? <tr><td colSpan="9">불러오는 중…</td></tr> : tiers.map((tier) => { const counts = poolDistribution(tier.mainPool); return <tr key={`dist-${tier.tier}`}><td><TierBadge tier={tier.tier} /></td><td><strong>Pool {tier.mainPool}</strong></td>{counts.map((count, index) => <td key={`${tier.tier}-${index}`}><span className={`distribution-value${count ? " is-active" : ""}`}>{count || "—"}</span></td>)}<td><strong className="distribution-total">5</strong></td></tr>; })}</tbody></table></div></div></>}</section>;
+function MatchProgression() {
+  return <section className="match-format-section" id="match-format" tabIndex="-1" aria-labelledby="match-format-title">
+    <div className="match-story">
+      <div className="story-sticky">
+        <p className="section-kicker">01 / HOW RANKED WORKS</p>
+        <h2 id="match-format-title">진행 방식</h2>
+        <div className="bo3-display" aria-label="Best of 3"><span>Best of</span><strong>3<span>.</span></strong></div>
+        <p className="story-caption">Round 1 → Round 2 → Round 3</p>
+        <span className="story-condition">Round 2 동률 시 Round 3</span>
+      </div>
+      <ol className="match-flow-grid">
+        {MATCH_FLOW.map((phase, index) => <Reveal as="li" className={`match-flow-step${index === MATCH_FLOW.length - 1 ? " conditional-step" : ""}`} key={phase.step}>
+          <div className="flow-marker"><span>{phase.step}</span></div>
+          <div className="flow-copy"><p>{phase.eyebrow}</p><h3>{phase.title}</h3><small>{phase.description}</small></div>
+          {index < MATCH_FLOW.length - 1 && <svg className="flow-arrow" viewBox="0 0 20 72" aria-hidden="true"><path d="M10 2v64m-5-5 5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+        </Reveal>)}
+      </ol>
+    </div>
+    <Reveal className="round-rules-section">
+      <div className="composition-title-line"><div><p className="section-kicker">NORMAL ROUND</p><h2>한 라운드의 기준.</h2></div><span>5:00 / 3 CLEAR</span></div>
+      <div className="round-rule-grid">
+        {ROUND_RULES.map((rule) => <details className="round-rule-card" key={rule.label}>
+          <summary><span className="round-stat"><strong>{rule.value}</strong><span>{rule.label}</span></span><span className="round-rule-title"><strong>{rule.title}</strong><i aria-hidden="true">+</i></span></summary>
+          <p>{rule.description}</p>
+        </details>)}
+      </div>
+    </Reveal>
+    <Reveal className="score-rule-shell">
+      <Disclosure eyebrow="ROUND SCORING" title="Attempt 점수">
+        <p className="score-introduction">맵별 Qualifying 기준을 통과한 뒤 구간별 배율을 적용합니다.</p>
+        <div className="score-rule-grid">{SCORE_RULES.map((rule) => <div className="score-rule" key={rule.range}><span>{rule.range}</span><strong>{rule.score}</strong><small>{rule.detail}</small></div>)}</div>
+      </Disclosure>
+    </Reveal>
+    <Reveal className="authority-note"><span>SERVER AUTHORITATIVE</span><p>시간, Attempt 승인, 점수, Clear, 라운드와 최종 승자는 Ranked 서버가 판정합니다. 최종 매치 draw는 없고 승자가 나올 때까지 Death Match가 반복됩니다.</p></Reveal>
+  </section>;
 }
 
-function PlacementInformation({ onBack }) { return <section className="tab-page placement-page"><div className="placement-page-nav"><button type="button" onClick={onBack}><Icon name="back" />정보로 돌아가기</button><span>RANKED INFO / PLACEMENT</span></div><PageHeading number="03.1" label="SOLO STAGE PLACEMENT" title="Find your rank" description="혼자 플레이하고, 나의 출발점을 결정하세요. 현재 배치는 PvP가 아닌 싱글플레이 Stage Run입니다." /><div className="placement-mode-grid">{[3, 5].map((stages) => <article key={stages}><div className="mode-card-heading"><span>{stages === 3 ? "QUICK RUN" : "FULL RUN"}</span><span>{stages * 2} MAPS</span></div><h2><strong>{stages}</strong> Stage</h2><div className="stage-map-diagram" role="img" aria-label={stages + " Stage, Stage마다 2맵, 총 " + stages * 2 + "맵"}>{Array.from({ length: stages }, (_, i) => <div key={i}><span>{String(i + 1).padStart(2, "0")}</span><i /><i /></div>)}</div><p>{stages === 3 ? <>총 6맵으로 빠르게 배치됩니다. 최종 Placement는 <b>AQUA 최상단</b>을 초과할 수 없습니다.</> : <>총 10맵을 플레이하며 <b>전체 Placement 범위</b>를 사용합니다.</>}</p></article>)}</div><section className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">01 / SETUP</p><h2>시작 Pool과 Run 길이</h2></div><span>시작 후 변경 불가</span></div><p>Run 시작 전에 3 Stage 또는 5 Stage와 본인이 생각하는 시작 실력대인 <b>POOL 1–POOL 6</b>을 선택합니다. 높은 Pool을 고른다고 최종 티어가 보장되지는 않습니다. 같은 Stage의 두 canonical map은 반드시 서로 다릅니다.</p><div className="placement-callout"><strong>SKIP PLACEMENT</strong><p>Run 시작 전에는 Placement를 건너뛸 수 있습니다. 확인하면 RED 150 LP로 배치가 확정되며 중복 적용되지 않습니다.</p></div></section><section className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">02 / MAP RULE</p><h2>각 맵 진행 방식</h2></div><span>3:00 + FINAL ATTEMPT</span></div><div className="placement-stat-grid"><article><strong>180s</strong><span>MAIN TIME</span><p>3분 동안 Attempt를 시작합니다.</p></article><article><strong>10s</strong><span>FINAL ATTEMPT</span><p>마지막 10초 안에 시작이 승인된 Attempt는 deadline 뒤에도 자연 종료까지 정산됩니다.</p></article><article><strong>2</strong><span>CLEAR TARGET</span><p>2 Clears를 달성하면 즉시 500점 · S Grade로 맵이 끝납니다.</p></article><article><strong>TOP 2</strong><span>MAP SCORE</span><p>유효 Attempt의 awarded score 중 상위 2개를 합산합니다.</p></article></div><div className="score-rule-shell placement-score-shell"><div className="score-rule-heading"><div><p className="section-kicker">SAME ATTEMPT CURVE</p><h3>Attempt 점수</h3></div><p>일반 Ranked와 동일한 scoring curve를 사용합니다.</p></div><div className="score-rule-grid">{SCORE_RULES.map((rule) => <div className="score-rule" key={`placement-${rule.range}`}><span>{rule.range}</span><strong>{rule.score}</strong><small>{rule.detail}</small></div>)}</div></div></section><section className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">03 / GRADE & POOL</p><h2>Map / Stage Grade</h2></div><span>Stage Score = 두 Map 평균</span></div><div className="placement-grade-grid">{PLACEMENT_GRADES.map((item) => <article className={`grade-${item.grade.toLowerCase()}`} key={item.grade}><strong>{item.grade}</strong><div><span>{item.range}</span><b>{item.movement}</b><small>{item.detail}</small></div></article>)}</div><p className="placement-muted">Stage Score는 두 Map Score의 평균입니다. Stage Grade에 따라 다음 Stage Pool이 이동하고 Pool은 1–6 범위로 제한됩니다.</p></section><section className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">04 / RESULT</p><h2>최종 배치 산정</h2></div><span>SERVER AUTHORITATIVE</span></div><div className="placement-result-flow"><article><span>1</span><h3>전체 evidence</h3><p>3 Stage는 6 Map + 3 Stage, 5 Stage는 10 Map + 5 Stage의 실제 score·Grade·Pool을 모두 사용합니다.</p></article><article><span>2</span><h3>Placement Rating</h3><p>Pool anchor와 normalized performance를 이용해 Placement Rating을 계산합니다.</p></article><article><span>3</span><h3>MMR → LP / Tier</h3><p>Placement Rating을 Hidden MMR로 연결한 뒤 기존 visible LP / Tier finalization을 적용합니다.</p></article><article><span>4</span><h3>Cutoff 보호</h3><p>non-lowest tier cutoff의 ±15 구간에는 배치하지 않고 cutoff−16으로 내려 경계 배치를 피합니다. 3 Stage에는 추가로 AQUA ceiling이 적용됩니다.</p></article></div></section><section className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">SAVE / RESUME</p><h2>중단 후 이어하기</h2></div><span>STATE PERSISTED</span></div><p>Stage Result에서 <b>PLAY LATER</b>를 선택하면 현재 Stage 결과가 서버에 저장되고, 이후 <b>CONTINUE PLACEMENT</b>로 이어서 진행할 수 있습니다. reconnect나 server restart 뒤에도 현재 Stage·Map·Attempt·result/finalization 상태를 복구하도록 설계되어 있습니다.</p></section></section>; }
+function RankedPolicyOverview() {
+  return <section className="policy-section" id="ranked-policy" tabIndex="-1">
+    <Reveal className="chapter-heading"><p className="section-kicker">02 / RANK & PROGRESSION</p><h2>랭크를 만드는 기준.</h2></Reveal>
+    <div className="ranked-policy-grid">
+      <Reveal><Disclosure className="policy-card policy-card-1" eyebrow="HIDDEN MMR / VISIBLE LP" title="MMR과 LP"><p>Hidden MMR은 매칭과 LP 보정에 사용되지만 공개되지 않습니다. MMR이 현재 LP보다 높으면 승리 시 더 많이 오르고 패배 시 덜 내려가며, 낮으면 반대로 적용됩니다. 상대의 강약도 함께 반영됩니다.</p></Disclosure></Reveal>
+      <Reveal><Disclosure className="policy-card policy-card-2" eyebrow="PERFECT WIN" title="Perfect Win"><p>최종 승자가 한 Round도 패배하지 않고, 모든 결정 승리를 실제 3-Clear로 만든 경우에만 인정됩니다. Round draw는 허용되지만 score win, forfeit, forced win, Death Match 승리는 조건을 만족하지 않습니다.</p></Disclosure></Reveal>
+      <Reveal><Disclosure className="policy-card policy-card-3" eyebrow="PROMOTION" title="승급전"><p>예상 승리 LP가 다음 cutoff에 닿기 전에 LP를 cutoff−1에 고정하고 승급전을 시작합니다. 승급전 중에도 Hidden MMR과 streak는 계속 변하며, 필요한 판수와 승수는 운영 시트의 티어 설정을 따릅니다.</p></Disclosure></Reveal>
+    </div>
+  </section>;
+}
+
+function PlacementSummary({ onOpenPlacement }) {
+  return <Reveal as="section" className="placement-summary" id="placement-summary" tabIndex="-1">
+    <div className="placement-summary-copy">
+      <p className="section-kicker">03 / SOLO STAGE PLACEMENT</p>
+      <h2>배치 경기<span>.</span></h2>
+      <p>현재 Placement는 PvP가 아니라 싱글플레이 Stage 방식입니다. 3 Stage 또는 5 Stage를 선택하고, Stage마다 서로 다른 2개 맵을 플레이해 Map Score와 Grade를 쌓습니다.</p>
+      <button className="placement-detail-button" type="button" onClick={onOpenPlacement}>자세히 보기 <Icon name="arrow" /></button>
+    </div>
+    <div className="placement-summary-visual">
+      <div className="placement-lengths" aria-label="3 Stage 또는 5 Stage"><strong>3</strong><span>or</span><strong>5</strong></div>
+      <div className="placement-summary-facts"><span><strong>3 / 5</strong> STAGES</span><span><strong>2</strong> MAPS / STAGE</span><span><strong>3:00</strong> MAP TIME</span><span><strong>2</strong> CLEAR TARGET</span></div>
+    </div>
+  </Reveal>;
+}
+
+function Information({ maps, mapsLoading, tiers, config, loading, error, reload, onOpenPlacement }) {
+  const poolCounts = useMemo(() => POOLS.map((pool) => maps.filter((map) => map.pool === pool).length), [maps]);
+  const demotionPenalty = Number(config.demotionScorePenalty) || 0;
+  return <section className="tab-page information-page">
+    <header className="guide-hero">
+      <p className="section-kicker">CORUM RANKED / RULES & FORMAT</p>
+      <h1>The rulebook<span>.</span></h1>
+      <p>첫 매칭부터 승급까지. 플레이에 필요한 모든 기준.</p>
+      <button className="text-link" type="button" onClick={() => scrollToSection("match-format")}>진행 방식 살펴보기 <Icon name="arrow" /></button>
+    </header>
+    <div className="chapter-links" role="group" aria-label="정보 목차">
+      {[["match-format","진행 방식"],["ranked-policy","랭크와 점수"],["placement-summary","배치 경기"],["ranked-tiers","티어와 Pool"]].map(([id,label], index) => <button key={id} type="button" onClick={() => scrollToSection(id)}><span>0{index + 1}</span>{label}</button>)}
+    </div>
+    <MatchProgression />
+    <RankedPolicyOverview />
+    <PlacementSummary onOpenPlacement={onOpenPlacement} />
+    <section className="live-information" id="ranked-tiers" tabIndex="-1">
+      <Reveal className="chapter-heading live-heading"><div><p className="section-kicker">04 / LIVE TIER & POOL DATA</p><h2>티어와 Pool.</h2></div><button className="reload-button" type="button" aria-label="데이터 새로고침" onClick={reload} disabled={loading}><Icon name="refresh" />정보 새로고침</button></Reveal>
+      {error ? <StateCard type="error" title="운영 정보를 불러오지 못했습니다." description={error} action={<button className="primary-button" onClick={reload}>다시 시도</button>} /> : <>
+        <Reveal className="info-section-shell">
+          <Disclosure eyebrow="TIER BANDS · 운영 시트 실시간" title="티어 커트 · 승급전" open>
+            <div className="table-scroll" role="region" aria-label="티어 커트와 승급전 표" tabIndex="0"><table className="tier-rule-table"><thead><tr><th>티어</th><th>LP 구간</th><th>승급</th><th>Main Pool</th><th>Deathmatch Pool</th></tr></thead><tbody>{loading ? <tr><td colSpan="5">불러오는 중…</td></tr> : tiers.map((tier, index) => {
+              const target = tiers[index + 1]?.tier;
+              return <tr key={tier.tier}><td><TierBadge tier={tier.tier} /></td><td><strong>{tier.minimum.toLocaleString()} ~ {tier.maximum === null ? "∞" : (tier.maximum - 1).toLocaleString()} LP</strong></td><td>{target ? <><strong>{tier.tier} → {target}</strong><small>{tier.promotionGames}전 {tier.promotionWinsRequired}승</small></> : <strong>최상위 티어</strong>}</td><td>Pool {tier.mainPool}</td><td>Pool {tier.deathmatchPool}</td></tr>;
+            })}</tbody></table></div>
+          </Disclosure>
+        </Reveal>
+        <Reveal className="demotion-panel">
+          <Disclosure eyebrow="DEMOTION POLICY" title="강등 조건">
+            <ol><li>패배 예상 LP가 현재 tier floor 아래면 먼저 LP를 floor에 고정합니다.</li><li>Hidden MMR이 floor 이상이면 경고 없이 floor를 유지합니다. Hidden MMR도 floor 미만이면 첫 qualifying loss에서 <strong>DEMOTION WARNING</strong>이 켜집니다.</li><li>경고 상태에서 다음 qualifying loss가 발생하면 강등됩니다.{demotionPenalty ? <> 기본 운영값은 새 tier 기준 <strong>{demotionPenalty} LP</strong> penalty를 사용합니다.</> : null} 승리하면 경고가 해제됩니다.</li></ol>
+          </Disclosure>
+        </Reveal>
+        <Reveal className="pool-count-strip">{POOLS.map((pool, index) => <div className={`pool-count pool-${pool}`} key={pool}><span>POOL {pool}</span><strong>{mapsLoading ? "—" : poolCounts[index]}</strong><small>등록 맵</small></div>)}</Reveal>
+        <Reveal className="composition-table-shell">
+          <Disclosure eyebrow="5 MAP CANDIDATES · 합계 5개" title="Main Pool별 후보 분포">
+            <div className="table-scroll" role="region" aria-label="Main Pool별 5맵 후보 분포 표" tabIndex="0"><table><thead><tr><th>티어</th><th>Main</th>{POOLS.map((pool) => <th key={pool}>Pool {pool}</th>)}<th>합계</th></tr></thead><tbody>{loading ? <tr><td colSpan="9">불러오는 중…</td></tr> : tiers.map((tier) => {
+              const counts = poolDistribution(tier.mainPool);
+              return <tr key={`dist-${tier.tier}`}><td><TierBadge tier={tier.tier} /></td><td><strong>Pool {tier.mainPool}</strong></td>{counts.map((count, index) => <td key={`${tier.tier}-${index}`}><span className={`distribution-value${count ? " is-active" : ""}`}>{count || "—"}</span></td>)}<td><strong className="distribution-total">5</strong></td></tr>;
+            })}</tbody></table></div>
+          </Disclosure>
+        </Reveal>
+      </>}
+    </section>
+  </section>;
+}
+
+function PlacementInformation({ onBack }) { return <section className="tab-page placement-page"><div className="placement-page-nav"><button type="button" onClick={onBack}><Icon name="back" />정보로 돌아가기</button><span>RANKED INFO / PLACEMENT</span></div><PageHeading number="03.1" label="SOLO STAGE PLACEMENT" title="Find your rank" description="혼자 플레이하고, 나의 출발점을 결정하세요. 현재 배치는 PvP가 아닌 싱글플레이 Stage Run입니다." /><div className="placement-mode-grid">{[3, 5].map((stages) => <Reveal as="article" key={stages}><div className="mode-card-heading"><span>{stages === 3 ? "QUICK RUN" : "FULL RUN"}</span><span>{stages * 2} MAPS</span></div><h2><strong>{stages}</strong> Stage</h2><div className="stage-map-diagram" role="img" aria-label={stages + " Stage, Stage마다 2맵, 총 " + stages * 2 + "맵"}>{Array.from({ length: stages }, (_, i) => <div key={i}><span>{String(i + 1).padStart(2, "0")}</span><i /><i /></div>)}</div><p>{stages === 3 ? <>총 6맵으로 빠르게 배치됩니다. 최종 Placement는 <b>AQUA 최상단</b>을 초과할 수 없습니다.</> : <>총 10맵을 플레이하며 <b>전체 Placement 범위</b>를 사용합니다.</>}</p></Reveal>)}</div><Reveal as="section" className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">01 / SETUP</p><h2>시작 Pool과 Run 길이</h2></div><span>시작 후 변경 불가</span></div><p>Run 시작 전에 3 Stage 또는 5 Stage와 본인이 생각하는 시작 실력대인 <b>POOL 1–POOL 6</b>을 선택합니다. 높은 Pool을 고른다고 최종 티어가 보장되지는 않습니다. 같은 Stage의 두 canonical map은 반드시 서로 다릅니다.</p><div className="placement-callout"><strong>SKIP PLACEMENT</strong><p>Run 시작 전에는 Placement를 건너뛸 수 있습니다. 확인하면 RED 150 LP로 배치가 확정되며 중복 적용되지 않습니다.</p></div></Reveal><Reveal as="section" className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">02 / MAP RULE</p><h2>각 맵 진행 방식</h2></div><span>3:00 + FINAL ATTEMPT</span></div><div className="placement-stat-grid"><article><strong>180s</strong><span>MAIN TIME</span><p>3분 동안 Attempt를 시작합니다.</p></article><article><strong>10s</strong><span>FINAL ATTEMPT</span><p>마지막 10초 안에 시작이 승인된 Attempt는 deadline 뒤에도 자연 종료까지 정산됩니다.</p></article><article><strong>2</strong><span>CLEAR TARGET</span><p>2 Clears를 달성하면 즉시 500점 · S Grade로 맵이 끝납니다.</p></article><article><strong>TOP 2</strong><span>MAP SCORE</span><p>유효 Attempt의 awarded score 중 상위 2개를 합산합니다.</p></article></div><div className="score-rule-shell placement-score-shell"><div className="score-rule-heading"><div><p className="section-kicker">SAME ATTEMPT CURVE</p><h3>Attempt 점수</h3></div><p>일반 Ranked와 동일한 scoring curve를 사용합니다.</p></div><div className="score-rule-grid">{SCORE_RULES.map((rule) => <div className="score-rule" key={`placement-${rule.range}`}><span>{rule.range}</span><strong>{rule.score}</strong><small>{rule.detail}</small></div>)}</div></div></Reveal><Reveal as="section" className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">03 / GRADE & POOL</p><h2>Map / Stage Grade</h2></div><span>Stage Score = 두 Map 평균</span></div><div className="placement-grade-grid">{PLACEMENT_GRADES.map((item) => <article className={`grade-${item.grade.toLowerCase()}`} key={item.grade}><strong>{item.grade}</strong><div><span>{item.range}</span><b>{item.movement}</b><small>{item.detail}</small></div></article>)}</div><p className="placement-muted">Stage Score는 두 Map Score의 평균입니다. Stage Grade에 따라 다음 Stage Pool이 이동하고 Pool은 1–6 범위로 제한됩니다.</p></Reveal><Reveal as="section" className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">04 / RESULT</p><h2>최종 배치 산정</h2></div><span>SERVER AUTHORITATIVE</span></div><div className="placement-result-flow"><article><span>1</span><h3>전체 evidence</h3><p>3 Stage는 6 Map + 3 Stage, 5 Stage는 10 Map + 5 Stage의 실제 score·Grade·Pool을 모두 사용합니다.</p></article><article><span>2</span><h3>Placement Rating</h3><p>Pool anchor와 normalized performance를 이용해 Placement Rating을 계산합니다.</p></article><article><span>3</span><h3>MMR → LP / Tier</h3><p>Placement Rating을 Hidden MMR로 연결한 뒤 기존 visible LP / Tier finalization을 적용합니다.</p></article><article><span>4</span><h3>Cutoff 보호</h3><p>non-lowest tier cutoff의 ±15 구간에는 배치하지 않고 cutoff−16으로 내려 경계 배치를 피합니다. 3 Stage에는 추가로 AQUA ceiling이 적용됩니다.</p></article></div></Reveal><Reveal as="section" className="placement-detail-section"><div className="composition-title-line"><div><p className="section-kicker">SAVE / RESUME</p><h2>중단 후 이어하기</h2></div><span>STATE PERSISTED</span></div><p>Stage Result에서 <b>PLAY LATER</b>를 선택하면 현재 Stage 결과가 서버에 저장되고, 이후 <b>CONTINUE PLACEMENT</b>로 이어서 진행할 수 있습니다. reconnect나 server restart 뒤에도 현재 Stage·Map·Attempt·result/finalization 상태를 복구하도록 설계되어 있습니다.</p></Reveal></section>; }
 
 function tabFromHash() { if (window.location.hash === "#ranking") return "ranking"; if (window.location.hash === "#placement") return "placement"; if (window.location.hash === "#info" || window.location.hash === "#pools") return "info"; return "list"; }
 function App() {
   const [tab, setTab] = useState(tabFromHash);
+  useStickyOffsets(tab);
   const { theme, toggleTheme } = useTheme();
   const rankedMaps = useRankedMaps();
   const leaderboard = useLeaderboard();
