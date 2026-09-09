@@ -3,10 +3,13 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 import "./placement.css";
 import { Reveal, Disclosure, scrollToSection, useStickyOffsets } from "./motion.jsx";
-import { StageRunDemo, ClearDemo, ScoreDemo, Bo3Demo, StageGradeDemo, DeathMatchDemo } from "./rule-demos.jsx";
+import { StageRunDemo, ClearDemo, ScoreDemo, StageGradeDemo } from "./rule-demos.jsx";
 import { csvObjects, normalizeLeaderboard, loadRankedMaps, fetchText, placementDisplay } from "./ranked-data.js";
 import { TierArtwork, ArtworkBackdrop, RankShowcase, RankGallery } from "./artwork.jsx";
 import "./showcase.css";
+import { CopyMapCode } from "./copy-map-code.jsx";
+import { MatchJourney } from "./match-journey.jsx";
+import "./interaction.css";
 
 const SHEET_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRzHKOAa1pnP8TCB3d22TZwM5G3BgQSZhiFloApWA6mMptX6PdU_q6bKj8fs9IhpujO9WZ8Cln7e6vW/pub";
 const SHEET2_CSV_URL = `${SHEET_BASE}?gid=1963044442&single=true&output=csv`;
@@ -136,7 +139,7 @@ function ServerStatus({ loading, error, serverOpen }) {
   return <div className={"server-status " + (open ? "is-open" : loading || error ? "is-unknown" : "is-closed")} role="status" aria-live="polite"><i aria-hidden="true" /><span>{label}</span></div>;
 }
 function PageHeading({ number, label, title, description, count, countLabel, action, artworkTier }) {
-  return <div className="page-heading"><ArtworkBackdrop /><div className="page-heading-copy"><p className="section-kicker"><span>{number}</span> / {label}</p><h1>{title}<span className="heading-period" aria-hidden="true">.</span></h1><p className="page-description">{description}</p></div>{countLabel && <div className="total-counter"><strong>{count}</strong><span>{countLabel}</span></div>}{artworkTier && <TierArtwork tier={artworkTier} className="page-heading-artwork" priority />}{action}</div>;
+  return <div className="page-heading"><ArtworkBackdrop /><div className="page-heading-copy"><p className="section-kicker"><span>{number}</span> / {label}</p><h1>{title}<span className="heading-period" aria-hidden="true">.</span></h1><p className="page-description">{description}</p></div>{countLabel && <div className="total-counter"><strong>{count}</strong><span>{countLabel}</span></div>}{artworkTier && <TierArtwork tier={artworkTier} className="page-heading-artwork" variant="heading" priority />}{action}</div>;
 }
 function StateCard({ type, title, description, action }) { return <div className={`state-card ${type === "error" ? "error-state" : ""}`} role={type === "error" ? "alert" : undefined}><span>{type === "error" ? "LOAD FAILED" : "NO DATA"}</span><h2>{title}</h2><p>{description}</p>{action}</div>; }
 
@@ -172,7 +175,7 @@ function MapList({ maps, loading, error, reload }) {
                 <div className="pool-mark"><span>POOL</span><strong>{String(map.pool).padStart(2, "0")}</strong></div>
                 <div className="map-title"><h2>{map.title}</h2></div>
                 <div className="map-difficulty"><span className="mobile-field-label">난이도</span><DifficultyBadge value={map.difficulty} /></div>
-                <div className="map-code"><span>맵 코드</span><strong>{map.mapCode}</strong></div>
+                <CopyMapCode code={map.mapCode} />
                 <div className="qualifying"><span>QUALIFYING</span><strong>{map.qualifyingPercent !== "" ? map.qualifyingPercent + "%" : "—"}</strong><div className="qualifying-track" aria-hidden="true"><i style={{ width: Math.min(100, Math.max(0, Number(map.qualifyingPercent) || 0)) + "%" }} /></div></div>
               </article>)}</div> : <StateCard title={assignedMaps.length ? "검색 결과가 없습니다." : "배정된 맵이 없습니다."} description={assignedMaps.length ? "검색어나 Pool 필터를 변경해 보세요." : "Ranked Pool에 등록된 맵이 여기에 표시됩니다."} />}</>}
       </div>
@@ -228,22 +231,7 @@ function Ranking({ players, loading, error, reload }) {
 
 function MatchProgression() {
   return <section className="match-format-section" id="match-format" tabIndex="-1" aria-labelledby="match-format-title">
-    <div className="match-story">
-      <div className="story-sticky">
-        <p className="section-kicker">01 / HOW RANKED WORKS</p>
-        <h2 id="match-format-title">진행 방식</h2>
-        <div className="bo3-display" aria-label="Best of 3"><span>Best of</span><strong>3<span>.</span></strong></div>
-        <p className="story-caption">Round 1 → Round 2 → Round 3</p>
-        <span className="story-condition">Round 2 동률 시 Round 3</span>
-      </div>
-      <ol className="match-flow-grid">
-        {MATCH_FLOW.map((phase, index) => <Reveal as="li" className={`match-flow-step${index === MATCH_FLOW.length - 1 ? " conditional-step" : ""}`} key={phase.step}>
-          <div className="flow-marker"><span>{phase.step}</span></div>
-          <div className="flow-copy"><p>{phase.eyebrow}</p><h3>{phase.title}</h3><small>{phase.description}</small>{index === 2 && <Bo3Demo />}{index === MATCH_FLOW.length - 1 && <DeathMatchDemo />}</div>
-          {index < MATCH_FLOW.length - 1 && <svg className="flow-arrow" viewBox="0 0 20 72" aria-hidden="true"><path d="M10 2v64m-5-5 5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-        </Reveal>)}
-      </ol>
-    </div>
+    <MatchJourney phases={MATCH_FLOW} />
     <Reveal className="round-rules-section">
       <div className="composition-title-line"><div><p className="section-kicker">NORMAL ROUND</p><h2>한 라운드의 기준.</h2></div><span>5:00 / 3 CLEAR</span></div>
       <div className="round-rule-grid">
