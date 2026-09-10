@@ -4,9 +4,11 @@ const ARTWORK_BASE = `${import.meta.env.BASE_URL}artwork/`;
 const ARTWORK_TIERS = ["UNRANKED", "RED", "AQUA", "BRONZE", "SILVER", "GOLD"];
 const ARTWORK_SIZES = {
   badge:"(max-width: 700px) 3rem, (max-width: 900px) 3.4rem, 4.3rem",
-  gallery:"(max-width: 700px) 7rem, 8.5rem",
-  hero:"(max-width: 700px) 14rem, (max-width: 1300px) 30vw, 24rem",
-  side:"(max-width: 700px) 7rem, (max-width: 1300px) 16vw, 13rem",
+  gallery:"(max-width: 700px) 6rem, 10rem",
+  hero:"(max-width: 700px) 16rem, (max-width: 1300px) 34vw, 28rem",
+  side:"(max-width: 700px) 7rem, (max-width: 1300px) 15vw, 12rem",
+  leader:"(max-width: 700px) 4rem, 8rem",
+  mode:"(max-width: 700px) 7rem, 10rem",
   heading:"(max-width: 480px) 8rem, (max-width: 700px) 7rem, (max-width: 900px) 11rem, 15rem",
 };
 
@@ -45,7 +47,7 @@ export function RankShowcase() {
 
 export function RankGallery() {
   return <ul className="rank-gallery" aria-label="Ranked 티어">
-    {ARTWORK_TIERS.map((tier) => <li key={tier} className={`rank-gallery-item tier-${tier.toLowerCase()}`}>
+    {ARTWORK_TIERS.map((tier, index) => <li key={tier} className={`rank-gallery-item tier-${tier.toLowerCase()}`} style={{ "--tier-index": index }}>
       <TierArtwork tier={tier} variant="gallery" />
       <span>{tier}</span>
     </li>)}

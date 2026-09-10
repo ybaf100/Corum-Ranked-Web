@@ -42,6 +42,7 @@ export function MatchJourney({ phases }) {
     if (next !== undefined) { event.preventDefault(); choose(next, true); }
   };
   return <div className="match-journey" data-reveal={reveal} onFocusCapture={() => { if (reveal === "pending") setReveal("static"); }}>
+    <div className="journey-stage">
     <div className="journey-heading">
       <div><p className="section-kicker">01 / HOW RANKED WORKS</p><h2 id="match-format-title">진행 방식</h2></div>
       <div className="journey-format" aria-label="Best of 3"><span>Best of</span><strong>3<span>.</span></strong></div>
@@ -63,6 +64,7 @@ export function MatchJourney({ phases }) {
         <div className="journey-panel-heading"><span>{phase.step} / {phase.eyebrow}</span><h3>{phase.title}</h3></div>
         <p>{phase.description}</p>
       </div>)}
+    </div>
     </div>
     <div className="journey-examples"><Reveal><Bo3Demo /></Reveal><Reveal><DeathMatchDemo /></Reveal></div>
   </div>;
