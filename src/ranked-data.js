@@ -279,3 +279,34 @@ export async function loadRankedMaps(apiUrl, sheetUrl, signal) {
     }
   }
 }
+
+const SOLO_FORMATS = new Set(["BO3", "SINGLE"]);
+const isoOrNull = (value) => { if (!value) return null; const date = new Date(value); return Number.isNaN(date.getTime()) ? null : date.toISOString(); };
+const count = (value) => Math.max(0, Math.floor(Number(value) || 0));
+/** Public GET /api/ranked/live: in-progress Solo and Survival matches plus queue counts. */
+export function normalizeLive(payload) {
+  if (!payload || typeof payload !== "object" || !payload.solo || !payload.survival) throw new Error("LIVE 응답 형식이 올바르지 않습니다.");
+  const solo = (Array.isArray(payload.solo.matches) ? payload.solo.matches : []).flatMap((match) => {
+    const players = Array.isArray(match?.players) ? match.players.slice(0, 2).map((player) => ({ name: String(player?.name || "").trim(), isBot: player?.isBot === true, tier: player?.tier ? String(player.tier).toUpperCase() : null })) : [];
+    if (players.length !== 2 || players.some((player) => !player.name)) return [];
+    const wins = Array.isArray(match.roundWins) ? match.roundWins.map(count) : [0, 0];
+    const score = match.roundScore && Array.isArray(match.roundScore.scores) ? { scores: match.roundScore.scores.map((value) => value == null ? null : Number(value)), clears: (match.roundScore.clears || [0, 0]).map(count) } : null;
+    return [{
+      state: String(match.state || ""), botMatch: match.botMatch === true, effectiveTier: match.effectiveTier ? String(match.effectiveTier).toUpperCase() : null,
+      format: SOLO_FORMATS.has(match.format) ? match.format : "BO3", round: Number.isInteger(match.round) ? match.round : null,
+      deathmatch: match.deathmatch ? { sequence: Number.isInteger(match.deathmatch.sequence) ? match.deathmatch.sequence : null, map: match.deathmatch.map ? String(match.deathmatch.map) : null } : null,
+      roundWins: [wins[0] ?? 0, wins[1] ?? 0], players,
+      map: match.map?.title ? { title: String(match.map.title), difficulty: match.map.difficulty == null ? null : normalizeDifficulty(match.map.difficulty), pool: Number.isInteger(match.map.pool) ? match.map.pool : null } : null,
+      roundScore: score, deadlineAt: isoOrNull(match.deadlineAt), startedAt: isoOrNull(match.startedAt),
+    }];
+  });
+  const survival = (Array.isArray(payload.survival.matches) ? payload.survival.matches : []).map((match) => ({
+    state: String(match?.state || ""), kind: match?.kind === "ONLINE" ? "ONLINE" : match?.kind === "DEBUG" ? "DEBUG" : "OTHER",
+    phase: match?.phase ? String(match.phase) : null, targetQualifiers: match?.targetQualifiers == null ? null : count(match.targetQualifiers),
+    entrants: count(match?.entrants), alive: count(match?.alive), humans: count(match?.humans),
+    aliveHumans: Array.isArray(match?.aliveHumans) ? match.aliveHumans.map((name) => String(name)).filter(Boolean) : [],
+    map: match?.map?.title ? { title: String(match.map.title), creator: match.map.creator ? String(match.map.creator) : null } : null,
+    endsAt: isoOrNull(match?.endsAt), startedAt: isoOrNull(match?.startedAt),
+  }));
+  return { solo: { queued: count(payload.solo.queued), matches: solo }, survival: { queued: count(payload.survival.queued), matches: survival } };
+}

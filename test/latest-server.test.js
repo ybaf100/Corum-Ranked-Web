@@ -107,3 +107,20 @@ test("reads rule clocks, mode switches and seasons from the public config", () =
   assert.equal(partial.modes.survival.enabled, false);
   assert.throws(() => normalizeRankedConfig({}));
 });
+
+test("reads the public LIVE board and drops malformed matches", async () => {
+  const { normalizeLive } = await import("../src/ranked-data.js");
+  const board = normalizeLive({ solo: { queued: 2, matches: [
+    { state: "ROUND_PLAYING", botMatch: false, effectiveTier: "BRONZE", format: "SINGLE", round: 1, roundWins: [0, 0],
+      players: [{ name: "A", tier: "BRONZE2" }, { name: "B", isBot: true, tier: "BRONZE3" }], map: { title: "Map", difficulty: "20", pool: 4 },
+      roundScore: { scores: [312.5, 0], clears: [1, 0] }, deadlineAt: "2026-11-13T09:00:00Z" },
+    { state: "ROUND_PLAYING", players: [{ name: "only one" }] },
+  ] }, survival: { queued: 0, matches: [{ state: "PLAYING", kind: "ONLINE", phase: "ROUND_2", targetQualifiers: 6, entrants: 16, alive: 10, humans: 3, aliveHumans: ["X"], map: { title: "Sky" } }] } });
+  assert.equal(board.solo.queued, 2);
+  assert.equal(board.solo.matches.length, 1);
+  assert.equal(board.solo.matches[0].format, "SINGLE");
+  assert.equal(board.solo.matches[0].map.difficulty, "20.0");
+  assert.equal(board.solo.matches[0].players[1].isBot, true);
+  assert.equal(board.survival.matches[0].alive, 10);
+  assert.throws(() => normalizeLive({ solo: {} }));
+});

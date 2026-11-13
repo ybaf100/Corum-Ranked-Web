@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { TierArtwork } from "./artwork.jsx";
 import { placementDisplay, tierLabel } from "./ranked-data.js";
 import { PageHeading, SearchToolbar, StateCard, TierBadge, seasonText } from "./ui.jsx";
+import { LiveBoard } from "./live.jsx";
 
 function formatMarks(results, required) { const known = Number.isFinite(required) && required > 0; const length = known ? required : results.length; const marks = results.slice(0, length).map((result) => result === "WIN" ? "O" : "X"); return `${marks.join("")}${"-".repeat(Math.max(0, length - marks.length))}` || "—"; }
 function formatWinRate(player) { const total = player.wins + player.losses; if (!total) return "0"; const rate = player.wins / total * 100; return Number.isInteger(rate) ? String(rate) : rate.toFixed(1); }
@@ -104,7 +105,7 @@ function modeStatus(loading, error, open) {
   return open ? { label: "열림", tone: "is-open" } : { label: "닫힘", tone: "is-closed" };
 }
 
-export function Ranking({ solo, survival, config }) {
+export function Ranking({ solo, survival, config, live }) {
   const [mode, setMode] = useState("solo");
   const [query, setQuery] = useState("");
   const board = mode === "solo" ? solo : survival;
@@ -116,6 +117,7 @@ export function Ranking({ solo, survival, config }) {
   const count = board.loading || board.error ? "—" : board.data?.totalPlayers ?? board.players.length;
   return <section className="tab-page ranking-page">
     <PageHeading number="02" label="PUBLIC STANDINGS" title="Leader" accent="board" description="티어, LP, 그리고 기록. 현재의 순위를 확인하세요." count={count} countLabel="PLAYERS" />
+    <LiveBoard live={live} />
     <div className="mode-switch" role="group" aria-label="순위 모드">
       {modes.map((item) => {
         const status = modeStatus(config.loading && !config.data, config.error && !config.data && item.open === undefined, item.open);

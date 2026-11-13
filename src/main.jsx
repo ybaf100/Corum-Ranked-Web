@@ -4,7 +4,7 @@ import "./styles.css";
 import "./pages.css";
 import "./interaction.css";
 import { useStickyOffsets } from "./motion.jsx";
-import { csvObjects, fetchJson, fetchText, loadRankedMaps, loadTierGuide, normalizeLeaderboard, normalizeRankedConfig } from "./ranked-data.js";
+import { csvObjects, fetchJson, fetchText, loadRankedMaps, loadTierGuide, normalizeLeaderboard, normalizeLive, normalizeRankedConfig } from "./ranked-data.js";
 import { MapList } from "./maps.jsx";
 import { Ranking } from "./ranking.jsx";
 import { Information, PlacementInformation } from "./info.jsx";
@@ -90,6 +90,22 @@ function useSurvivalLeaderboard() {
   }, [players.length, remote.data]);
   return { ...remote, loading: !active || remote.loading, players, hasMore, loadingMore: extra.loadingMore, loadMore, activate: () => setActive(true) };
 }
+/** Polls the public LIVE board every 10 s while the standings tab is open and the page is visible. */
+function useLive(active) {
+  const [visible, setVisible] = useState(() => document.visibilityState !== "hidden");
+  useEffect(() => { const update = () => setVisible(document.visibilityState !== "hidden"); document.addEventListener("visibilitychange", update); return () => document.removeEventListener("visibilitychange", update); }, []);
+  const remote = useRemoteData(async (signal) => normalizeLive(await fetchJson(`${API}/live`, signal, 10_000)), active && visible);
+  const { reload } = remote;
+  useEffect(() => {
+    if (!active || !visible) return undefined;
+    const timer = setInterval(reload, 10_000);
+    return () => clearInterval(timer);
+  }, [active, visible]);
+  // A failed poll keeps the last board instead of blanking it; a server without the API never shows one.
+  const last = useRef(null);
+  if (remote.data) last.current = remote.data;
+  return { ...remote, data: remote.data || last.current };
+}
 function useRankedMaps() {
   const remote = useRemoteData((signal) => loadRankedMaps(`${API}/maps`, SHEET2_CSV_URL, signal));
   return { ...remote, maps: remote.data || [] };
@@ -129,6 +145,7 @@ function App() {
   const solo = useSoloLeaderboard();
   const survival = useSurvivalLeaderboard();
   const tierGuide = useTierGuide();
+  const live = useLive(tab === "ranking");
   const sheetConfig = useSheetConfig();
   useEffect(() => {
     const syncTab = () => { setTab(tabFromHash()); window.scrollTo({ top: 0, behavior: "auto" }); };
@@ -152,7 +169,7 @@ function App() {
     </div></header>
     <main id="main-content" className="content" tabIndex="-1">
       {tab === "list" && <MapList {...rankedMaps} />}
-      {tab === "ranking" && <Ranking solo={solo} survival={survival} config={rankedConfig} />}
+      {tab === "ranking" && <Ranking solo={solo} survival={survival} config={rankedConfig} live={live} />}
       {tab === "info" && <Information maps={rankedMaps.maps} mapsLoading={rankedMaps.loading} tierState={tierGuide} rankedConfig={rankedConfig} sheetConfig={sheetConfig} reloadTiers={() => { tierGuide.reload(); rankedConfig.reload(); }} onOpenPlacement={() => changeTab("placement")} />}
       {tab === "placement" && <PlacementInformation onBack={() => changeTab("info")} tiers={tierGuide.tiers} />}
     </main>

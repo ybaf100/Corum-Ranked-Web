@@ -1,6 +1,15 @@
-# Corum Ranked Official Site v2.0.0
+# Corum Ranked Official Site v2.1.0
 
 Corum Ranked의 맵 풀, Solo·Survival 공개 순위와 최신 운영 규칙을 보여주는 공식 사이트입니다.
+
+## v2.1.0 LIVE 보드
+
+- 순위 탭 상단에 진행 중 경기를 보여주는 LIVE 보드를 추가했습니다. 서버 v0.6.0-beta.58의 공개
+  `GET /api/ranked/live`를 순위 탭이 열려 있고 화면이 보일 때만 10초마다 읽습니다.
+- Solo: 두 플레이어·표시 티어, 매치 형식(단판/BO3), 라운드 승수, 현재 라운드와 맵·난이도, 라운드 점수와
+  Clear, 남은 시간. Death Match와 봇 매치를 구분합니다.
+- Survival: 현재 라운드, 생존 인원/참가 인원, 통과 목표, 맵, 남은 시간, 생존 중인 플레이어 이름.
+- Solo·Survival 대기열 인원을 함께 표시합니다. 서버에 LIVE API가 없으면 보드는 표시되지 않습니다.
 
 ## v2.0.0 Night Arena 디자인 · 최신 서버 정보
 
