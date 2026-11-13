@@ -123,7 +123,7 @@ export function Ranking({ solo, survival, config, live }) {
         const status = modeStatus(config.loading && !config.data, config.error && !config.data && item.open === undefined, item.open);
         return <button key={item.id} type="button" className={mode === item.id ? "selected" : ""} aria-pressed={mode === item.id} onClick={() => choose(item.id)}>
           <span className="mode-name"><strong>{item.label}</strong><small>{item.detail}</small></span>
-          <span className="mode-meta"><span className={"mode-status " + status.tone}><i aria-hidden="true" />{status.label}</span>{item.season && <span>{seasonText(item.season)}</span>}</span>
+          <span className="mode-meta"><span className={"mode-status " + status.tone}><i aria-hidden="true" />{status.label}</span>{item.season && <span>{seasonText(item.season, item.open !== false)}</span>}</span>
         </button>;
       })}
     </div>

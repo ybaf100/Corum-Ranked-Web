@@ -210,7 +210,7 @@ function SurvivalChapter({ survival, rankedConfig, tiers }) {
   return <section className="survival-section chapter" id="survival" tabIndex="-1">
     <Reveal className="chapter-heading survival-heading">
       <div><p className="section-kicker"><span>05</span> / SURVIVAL MODE</p><h2>서바이벌</h2></div>
-      <div className="survival-status">{rankedConfig ? <><span className={"mode-status " + (survival.enabled ? "is-open" : "is-closed")}><i aria-hidden="true" />{survival.enabled ? "운영 중" : "닫힘"}</span>{count && <span>{count}인 운영</span>}<span>{seasonText(rankedConfig.seasons.survival)}</span></> : <span className="mode-status is-unknown"><i aria-hidden="true" />상태 확인 불가</span>}</div>
+      <div className="survival-status">{rankedConfig ? <><span className={"mode-status " + (survival.enabled ? "is-open" : "is-closed")}><i aria-hidden="true" />{survival.enabled ? "운영 중" : "닫힘"}</span>{count && <span>{count}인 운영</span>}<span>{seasonText(rankedConfig.seasons.survival, survival.enabled)}</span></> : <span className="mode-status is-unknown"><i aria-hidden="true" />상태 확인 불가</span>}</div>
     </Reveal>
     <Reveal className="survival-intro"><p>여러 명이 같은 맵을 동시에 플레이하고, 라운드마다 최고 진행률 상위권만 다음 라운드로 올라가는 모드입니다. Solo Ranked와 LP·순위·시즌이 따로 관리되고, 배치 경기와 승급전이 없습니다.</p></Reveal>
     {formats.map((players) => <Reveal key={players} className="survival-bracket" aria-label={`${players}인 운영 라운드별 통과 목표`}>
@@ -242,7 +242,7 @@ export function Information({ maps, mapsLoading, tierState, rankedConfig, sheetC
   return <section className="tab-page information-page">
     <header className="guide-hero">
       <div className="guide-hero-copy">
-        <p className="section-kicker">CORUM RANKED / RULES &amp; FORMAT{rankedConfig.data?.rulesVersion ? <> · <span>{rankedConfig.data.rulesVersion}</span></> : null}</p>
+        <p className="section-kicker">RANKED / RULES &amp; FORMAT{rankedConfig.data?.rulesVersion ? <> · <span>{rankedConfig.data.rulesVersion.replace(/^corum-/i, "")}</span></> : null}</p>
         <h1>The rule <em>book</em></h1>
         <p>첫 매칭부터 승급까지. 플레이에 필요한 모든 기준.</p>
         <button className="text-link" type="button" onClick={() => scrollToSection("match-format")}><span>진행 방식 살펴보기</span><Icon name="arrow" /></button>

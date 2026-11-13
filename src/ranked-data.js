@@ -94,7 +94,10 @@ export function normalizeRankedConfig(payload) {
   if (!payload || typeof payload !== "object" || !payload.rules || typeof payload.rules !== "object") throw new Error("Ranked 설정 응답 형식이 올바르지 않습니다.");
   const rules = Object.fromEntries(Object.entries(DEFAULT_RULES).map(([key, fallback]) => [key, positiveInteger(payload.rules[key], fallback)]));
   const solo = payload.modes?.soloRanked; const survival = payload.modes?.survival;
+  const serverNow = payload.serverNow ? new Date(payload.serverNow).getTime() : NaN;
   return {
+    // Countdowns follow the server clock, not a possibly wrong device clock.
+    serverOffsetMs: Number.isFinite(serverNow) ? serverNow - Date.now() : 0,
     rulesVersion: String(payload.rulesVersion || payload.rules.rulesVersion || ""),
     rules,
     modes: {
@@ -309,4 +312,32 @@ export function normalizeLive(payload) {
     endsAt: isoOrNull(match?.endsAt), startedAt: isoOrNull(match?.startedAt),
   }));
   return { solo: { queued: count(payload.solo.queued), matches: solo }, survival: { queued: count(payload.survival.queued), matches: survival } };
+}
+
+/** "n일 n시간" (≥1 day), "n시간 n분" (≥1 hour), otherwise "n분 n초". */
+export function formatRemaining(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const days = Math.floor(total / 86_400), hours = Math.floor(total % 86_400 / 3_600), minutes = Math.floor(total % 3_600 / 60), seconds = total % 60;
+  if (days >= 1) return `${days}일 ${hours}시간`;
+  if (hours >= 1) return `${hours}시간 ${minutes}분`;
+  return `${minutes}분 ${seconds}초`;
+}
+/**
+ * Server seasons: targetAt is the season end while the mode is enabled and the
+ * mode start while it is disabled (GET /api/ranked/config).
+ */
+export function seasonCountdown(season, enabled, nowMs) {
+  if (!season) return null;
+  const label = season.preseason ? "프리시즌" : `시즌 ${season.number}`;
+  if (!season.targetAt) return { label, time: null, text: label };
+  const left = new Date(season.targetAt).getTime() - nowMs;
+  const time = left > 0 ? `${formatRemaining(left)} ${enabled ? "남음" : "후 시작"}` : enabled ? "곧 종료" : "곧 시작";
+  return { label, time, text: `${label} ${time}` };
+}
+/** One combined line when both modes share the same season state and instant. */
+export function sameSeason(config) {
+  if (!config) return false;
+  const { solo, survival } = config.seasons;
+  return solo.targetAt === survival.targetAt && solo.preseason === survival.preseason && solo.number === survival.number
+    && (solo.targetAt === null || config.modes.solo.enabled === config.modes.survival.enabled);
 }

@@ -4,11 +4,11 @@ import "./styles.css";
 import "./pages.css";
 import "./interaction.css";
 import { useStickyOffsets } from "./motion.jsx";
-import { csvObjects, fetchJson, fetchText, loadRankedMaps, loadTierGuide, normalizeLeaderboard, normalizeLive, normalizeRankedConfig } from "./ranked-data.js";
+import { csvObjects, fetchJson, fetchText, loadRankedMaps, loadTierGuide, normalizeLeaderboard, normalizeLive, normalizeRankedConfig, sameSeason, seasonCountdown } from "./ranked-data.js";
 import { MapList } from "./maps.jsx";
 import { Ranking } from "./ranking.jsx";
 import { Information, PlacementInformation } from "./info.jsx";
-import { Icon } from "./ui.jsx";
+import { Icon, SeasonClockIcon, useNow } from "./ui.jsx";
 
 const SHEET_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRzHKOAa1pnP8TCB3d22TZwM5G3BgQSZhiFloApWA6mMptX6PdU_q6bKj8fs9IhpujO9WZ8Cln7e6vW/pub";
 const SHEET2_CSV_URL = `${SHEET_BASE}?gid=1963044442&single=true&output=csv`;
@@ -133,6 +133,29 @@ function ServerStatus({ config, solo }) {
   return <div className={"server-status " + (open === true ? "is-open" : open === false ? "is-closed" : "is-unknown")} role="status" aria-live="polite" title={detail}><i aria-hidden="true" /><span>{label}</span></div>;
 }
 
+/** Season countdown beside the server status: one line when both modes match, otherwise Survival then Solo. */
+function SeasonStatus({ config }) {
+  const data = config.data;
+  const now = useNow(data?.serverOffsetMs ?? 0);
+  const passed = data && [data.seasons.solo, data.seasons.survival].some((season) => season.targetAt && Date.parse(season.targetAt) <= now);
+  const { reload } = config;
+  // When an end or start instant passes, read the next season once.
+  useEffect(() => { if (!passed) return undefined; const timer = setTimeout(reload, 5_000); return () => clearTimeout(timer); }, [passed]);
+  if (!data) return null;
+  const rows = sameSeason(data)
+    ? [{ key: "all", mode: null, countdown: seasonCountdown(data.seasons.solo, data.modes.solo.enabled, now) }]
+    : [
+      { key: "survival", mode: "서바이벌", countdown: seasonCountdown(data.seasons.survival, data.modes.survival.enabled, now) },
+      { key: "solo", mode: "솔랭", countdown: seasonCountdown(data.seasons.solo, data.modes.solo.enabled, now) },
+    ];
+  return <div className={"season-status" + (rows.length > 1 ? " is-split" : "")} role="status" aria-live="off">
+    {rows.map(({ key, mode, countdown }) => <span className="season-row" key={key}>
+      <SeasonClockIcon />
+      <span>{mode && <><b>{mode}</b>{" "}</>}{countdown.label}{countdown.time && <>{" "}<em>{countdown.time}</em></>}</span>
+    </span>)}
+  </div>;
+}
+
 function tabFromHash() { if (window.location.hash === "#ranking") return "ranking"; if (window.location.hash === "#placement") return "placement"; if (window.location.hash === "#info" || window.location.hash === "#pools") return "info"; return "list"; }
 const TABS = [{ id: "list", label: "맵 리스트", number: "01" }, { id: "ranking", label: "순위", number: "02" }, { id: "info", label: "정보", number: "03" }];
 
@@ -156,13 +179,14 @@ function App() {
   return <div className="site-shell">
     <a className="skip-link" href="#main-content" onClick={(event) => { event.preventDefault(); document.getElementById("main-content")?.focus(); }}>본문으로 건너뛰기</a>
     <header className="site-header-wrap"><div className="site-header">
-      <button type="button" className="brand" onClick={() => changeTab("list")} aria-label="Corum Ranked 맵 리스트"><span className="brand-symbol" aria-hidden="true"><span>CR</span></span><span className="brand-wordmark"><strong>CORUM</strong><span>RANKED</span></span></button>
+      <button type="button" className="brand" onClick={() => changeTab("list")} aria-label="Ranked 맵 리스트"><span className="brand-symbol" aria-hidden="true"><span>R</span></span><span className="brand-wordmark"><strong>RANKED</strong></span></button>
       <nav className="site-tabs" aria-label="사이트 메뉴">{TABS.map((item) => {
         const active = tab === item.id || (tab === "placement" && item.id === "info");
         return <button type="button" key={item.id} className={active ? "active" : ""} onClick={() => changeTab(item.id)} aria-current={active ? "page" : undefined}><span><span className="tab-number" aria-hidden="true">{item.number}</span>{item.label}</span></button>;
       })}</nav>
       <div className="header-actions">
         <ServerStatus config={rankedConfig} solo={solo} />
+        <SeasonStatus config={rankedConfig} />
         <button type="button" className="header-button theme-button" onClick={toggleTheme} aria-label={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"} title={theme === "dark" ? "라이트 모드" : "다크 모드"}><Icon name={theme === "dark" ? "sun" : "moon"} /></button>
         <button type="button" className="header-button mod-button" aria-label="모드 다운로드 준비 중" disabled title="모드 다운로드 준비 중"><Icon name="download" /><span>모드<span className="soon-label">준비 중</span></span></button>
       </div>
@@ -173,7 +197,7 @@ function App() {
       {tab === "info" && <Information maps={rankedMaps.maps} mapsLoading={rankedMaps.loading} tierState={tierGuide} rankedConfig={rankedConfig} sheetConfig={sheetConfig} reloadTiers={() => { tierGuide.reload(); rankedConfig.reload(); }} onOpenPlacement={() => changeTab("placement")} />}
       {tab === "placement" && <PlacementInformation onBack={() => changeTab("info")} tiers={tierGuide.tiers} />}
     </main>
-    <footer className="footer"><div><strong>CORUM RANKED</strong><span>맵 · 순위 · 규칙</span></div><span>PUBLIC DATA / RANKED API + SHEETS</span></footer>
+    <footer className="footer"><div><strong>RANKED</strong><span>맵 · 순위 · 규칙</span></div><span>PUBLIC DATA / RANKED API + SHEETS</span></footer>
   </div>;
 }
 

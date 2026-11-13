@@ -1,4 +1,4 @@
-/* Night Arena — Corum Ranked v2.0. One broadcast-style system for maps, standings and rules.
+/* Night Arena — Ranked v2.0. One broadcast-style system for maps, standings and rules.
    Light and dark share every layout; only the tokens change. */
 :root {
   --page:#eef0f3; --surface:#ffffff; --surface-2:#f5f6f8; --surface-3:#e5e8ed;
@@ -323,4 +323,22 @@ svg { width:1.25rem; height:1.25rem; flex:none; }
 @media print {
   .site-header-wrap,.list-toolbar,.reload-button,.mode-switch { display:none; }
   .reveal,.reveal-pending { opacity:1!important; transform:none!important; }
+}
+
+/* Season countdown beside the server status */
+.season-status { display:flex; flex-direction:column; justify-content:center; gap:.15rem; min-height:44px; padding:.3rem .8rem; border:1px solid var(--line); background:var(--surface); }
+.season-row { display:flex; align-items:center; gap:.45rem; white-space:nowrap; font:700 .92rem/1.2 var(--display); letter-spacing:.04em; }
+.season-status.is-split .season-row { font-size:.84rem; }
+.season-row b { color:var(--muted); font-weight:700; }
+.season-row em { margin-left:.15rem; font-style:normal; color:var(--accent-text); font-variant-numeric:tabular-nums; }
+.season-clock { width:1.05rem; height:1.05rem; color:var(--accent-text); }
+.season-clock-minute,.season-clock-hour { transform-origin:12px 12px; transform-box:view-box; }
+@media (prefers-reduced-motion:no-preference) {
+  /* The minute hand turns in even quarter steps: one 90° step per second. */
+  .season-clock-minute { animation:season-quarter 4s steps(4,end) infinite; }
+  .season-clock-hour { animation:season-quarter 48s steps(4,end) infinite; }
+  @keyframes season-quarter { to { transform:rotate(360deg); } }
+}
+@media (max-width:640px) {
+  .season-status { order:5; flex-basis:100%; }
 }

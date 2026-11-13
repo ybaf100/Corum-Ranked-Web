@@ -1,5 +1,5 @@
-import React from "react";
-import { tierLabel } from "./ranked-data.js";
+import React, { useEffect, useState } from "react";
+import { seasonCountdown, tierLabel } from "./ranked-data.js";
 
 export function Icon({ name }) {
   const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
@@ -75,11 +75,22 @@ export function SearchToolbar({ label, placeholder, query, onQuery, onReload, lo
   </div>;
 }
 
-export function seasonText(season) {
-  if (!season) return null;
-  if (season.preseason) return "프리시즌";
-  const label = `시즌 ${season.number}`;
-  if (!season.targetAt) return label;
-  const days = Math.ceil((new Date(season.targetAt).getTime() - Date.now()) / 86_400_000);
-  return days > 0 ? `${label} · 종료까지 D-${days}` : label;
+/** Ticks once a second; mounted only where a countdown is visible. */
+export function useNow(offsetMs = 0) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
+  return now + offsetMs;
+}
+
+/** Clock whose minute hand advances in even 90° steps. */
+export function SeasonClockIcon() {
+  return <svg className="season-clock" viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    <path className="season-clock-hour" d="M12 12 15.5 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path className="season-clock-minute" d="M12 12V5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>;
+}
+
+export function seasonText(season, enabled = true) {
+  return seasonCountdown(season, enabled, Date.now())?.text ?? null;
 }

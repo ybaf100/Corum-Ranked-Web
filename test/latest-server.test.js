@@ -124,3 +124,23 @@ test("reads the public LIVE board and drops malformed matches", async () => {
   assert.equal(board.survival.matches[0].alive, 10);
   assert.throws(() => normalizeLive({ solo: {} }));
 });
+
+test("formats season countdowns by remaining size and mode state", async () => {
+  const { formatRemaining, seasonCountdown, sameSeason } = await import("../src/ranked-data.js");
+  const H = 3_600_000, D = 24 * H;
+  assert.equal(formatRemaining(3 * D + 5 * H + 59 * 60_000), "3일 5시간");
+  assert.equal(formatRemaining(D - 1), "23시간 59분");
+  assert.equal(formatRemaining(H + 61_000), "1시간 1분");
+  assert.equal(formatRemaining(59 * 60_000 + 7_400), "59분 7초");
+  assert.equal(formatRemaining(-5), "0분 0초");
+  const now = Date.parse("2026-11-13T00:00:00Z");
+  const season = { preseason: false, number: 2, targetAt: "2026-11-15T03:00:00.000Z" };
+  assert.equal(seasonCountdown(season, true, now).text, "시즌 2 2일 3시간 남음");
+  assert.equal(seasonCountdown(season, false, now).text, "시즌 2 2일 3시간 후 시작");
+  assert.equal(seasonCountdown({ ...season, targetAt: null, preseason: true }, true, now).text, "프리시즌");
+  assert.equal(seasonCountdown(season, true, Date.parse("2026-11-16T00:00:00Z")).time, "곧 종료");
+  const config = { modes: { solo: { enabled: true }, survival: { enabled: true } }, seasons: { solo: season, survival: { ...season } } };
+  assert.equal(sameSeason(config), true);
+  assert.equal(sameSeason({ ...config, seasons: { solo: season, survival: { ...season, targetAt: "2026-11-16T00:00:00.000Z" } } }), false);
+  assert.equal(sameSeason({ ...config, modes: { solo: { enabled: true }, survival: { enabled: false } } }), false);
+});
