@@ -117,7 +117,7 @@ export function Ranking({ solo, survival, config, live }) {
   const count = board.loading || board.error ? "—" : board.data?.totalPlayers ?? board.players.length;
   return <section className="tab-page ranking-page">
     <PageHeading number="02" label="PUBLIC STANDINGS" title="Leader" accent="board" description="티어, LP, 그리고 기록. 현재의 순위를 확인하세요." count={count} countLabel="PLAYERS" />
-    <LiveBoard live={live} />
+    <LiveBoard live={live} players={solo.players} survival={survival} rules={config.data?.rules} playerCount={config.data?.modes.survival.playerCount ?? null} />
     <div className="mode-switch" role="group" aria-label="순위 모드">
       {modes.map((item) => {
         const status = modeStatus(config.loading && !config.data, config.error && !config.data && item.open === undefined, item.open);
