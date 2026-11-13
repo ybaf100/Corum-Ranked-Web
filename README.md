@@ -88,6 +88,25 @@ npm run dev
 2. GitHub 저장소의 `Settings → Pages → Source`를 `GitHub Actions`로 설정합니다.
 3. 포함된 `.github/workflows/deploy.yml`이 `dist`를 자동 배포합니다.
 
+## 커스텀 도메인 `ranked.hwanhee1.com`
+
+사이트는 상대 경로(`base: "./"`)와 해시 라우팅을 쓰므로 코드 수정 없이 루트 도메인에서 동작합니다.
+GitHub Actions로 배포하므로 `CNAME` 파일은 쓰지 않고 저장소 설정에서 연결합니다.
+
+1. Cloudflare DNS(`hwanhee1.com`)에 레코드를 추가합니다: `CNAME ranked → ybaf100.github.io`,
+   Proxy status는 **DNS only**(회색 구름). 프록시를 켜면 GitHub가 HTTPS 인증서를 발급하지 못합니다.
+2. 이 저장소 `Settings → Pages → Custom domain`에 `ranked.hwanhee1.com`을 저장하고, DNS 확인과
+   인증서 발급이 끝나면 `Enforce HTTPS`를 켭니다. 계정 `Settings → Pages`에서 `hwanhee1.com`을
+   Verified domain으로 등록하면 다른 저장소가 이 도메인을 가져가지 못합니다.
+3. Ranked 서버의 `/etc/corum-ranked/server.env`에 새 origin을 추가합니다.
+
+   ```text
+   CORS_ORIGINS=https://ranked.hwanhee1.com,https://ybaf100.github.io
+   ```
+
+   env 파일은 컨테이너를 새로 띄울 때만 읽으므로 `docker restart`가 아니라 Lightsail 배포를 다시 실행해야 반영됩니다.
+4. 연결 후 `https://ybaf100.github.io/Corum-Ranked-Web/`은 GitHub가 새 도메인으로 자동 이동시킵니다.
+
 ## Ranked 서버 연결
 
 기본 서버는 `https://api.hwanhee1.com`입니다(Render·Railway 주소는 은퇴). 다른 서버를 사용하면 저장소의
@@ -101,8 +120,8 @@ VITE_RANKED_API_URL=https://your-ranked-server.example
 
 순위 탭, 상단 서버 상태와 정보 탭은 공개 읽기 전용 `GET /api/ranked/config`, `/leaderboard`,
 `/leaderboard/tiers`, `/survival/leaderboard`, `/maps`를 사용합니다. 매칭 활성화 여부와 공개 DB 조회 가능 여부는 서로 독립적입니다. 함께 제공된 서버
-패치를 Corum-Ranked 서버에 반영하고, 서버의 `CORS_ORIGINS`에 GitHub Pages origin인
-`https://ybaf100.github.io`를 등록해야 합니다. DB 접속 문자열을 프런트엔드에 넣지 마세요.
+패치를 Corum-Ranked 서버에 반영하고, 서버의 `CORS_ORIGINS`에 사이트 origin인
+`https://ranked.hwanhee1.com`(과 이전 주소 `https://ybaf100.github.io`)을 등록해야 합니다. DB 접속 문자열을 프런트엔드에 넣지 마세요.
 
 ## 데이터 원본
 
