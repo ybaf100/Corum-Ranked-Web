@@ -82,11 +82,10 @@ export function useNow(offsetMs = 0) {
   return now + offsetMs;
 }
 
-/** Clock whose minute hand advances in even 90° steps. */
+/** Clock face with only a minute hand, which advances in smooth, even 90° steps. */
 export function SeasonClockIcon() {
   return <svg className="season-clock" viewBox="0 0 24 24" aria-hidden="true">
     <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.8" />
-    <path className="season-clock-hour" d="M12 12 15.5 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     <path className="season-clock-minute" d="M12 12V5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
   </svg>;
 }
