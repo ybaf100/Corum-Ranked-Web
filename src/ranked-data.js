@@ -309,9 +309,11 @@ export function normalizeLive(payload) {
     entrants: count(match?.entrants), alive: count(match?.alive), humans: count(match?.humans),
     aliveHumans: Array.isArray(match?.aliveHumans) ? match.aliveHumans.map((name) => String(name)).filter(Boolean) : [],
     map: match?.map?.title ? { title: String(match.map.title), creator: match.map.creator ? String(match.map.creator) : null } : null,
-    endsAt: isoOrNull(match?.endsAt), startedAt: isoOrNull(match?.startedAt),
+    startsAt: isoOrNull(match?.startsAt), endsAt: isoOrNull(match?.endsAt), startedAt: isoOrNull(match?.startedAt),
   }));
-  return { solo: { queued: count(payload.solo.queued), matches: solo }, survival: { queued: count(payload.survival.queued), matches: survival } };
+  const serverNow = payload.serverNow ? Date.parse(payload.serverNow) : NaN;
+  return { serverOffsetMs: Number.isFinite(serverNow) ? serverNow - Date.now() : 0,
+    solo: { queued: count(payload.solo.queued), matches: solo }, survival: { queued: count(payload.survival.queued), matches: survival } };
 }
 
 /** "n일 n시간" (≥1 day), "n시간 n분" (≥1 hour), otherwise "n분 n초". */
@@ -340,4 +342,21 @@ export function sameSeason(config) {
   const { solo, survival } = config.seasons;
   return solo.targetAt === survival.targetAt && solo.preseason === survival.preseason && solo.number === survival.number
     && (solo.targetAt === null || config.modes.solo.enabled === config.modes.survival.enabled);
+}
+
+/** What counts as a major change: a match appearing or ending, a new state, round, phase, round win or clear. */
+export function liveSignature(board) {
+  if (!board) return "";
+  const solo = board.solo.matches.map((m) => [m.players[0].name, m.players[1].name, m.startedAt, m.state, m.round, m.deathmatch?.sequence ?? "", m.roundWins.join("-"), m.roundScore?.clears.join("-") ?? ""].join("|"));
+  const survival = board.survival.matches.map((m) => [m.startedAt, m.state, m.phase, m.alive].join("|"));
+  return [...solo, "#", ...survival].join("\n");
+}
+/** Milliseconds until the next server deadline (phase end, Survival round start or end), or null. */
+export function nextLiveTransition(board, nowMs) {
+  if (!board) return null;
+  const times = [
+    ...board.solo.matches.map((m) => m.deadlineAt),
+    ...board.survival.matches.flatMap((m) => [m.startsAt, m.endsAt]),
+  ].map((value) => value ? Date.parse(value) - nowMs : NaN).filter((delay) => Number.isFinite(delay) && delay > 0);
+  return times.length ? Math.min(...times) : null;
 }

@@ -215,7 +215,7 @@ function LiveMatchDialog({ selection, data, now, players, survivalPlayers, rules
       </header>
       {finished && <p className="live-detail-ended">이 경기는 끝났거나 더 이상 LIVE 목록에 없습니다. 결과는 순위표에 반영됩니다.</p>}
       {selection.type === "solo" ? <SoloDetail match={shown} now={now} players={players} rules={rules} /> : <SurvivalDetail match={shown} now={now} survivalPlayers={survivalPlayers} playerCount={playerCount} />}
-      <p className="live-detail-muted">10초마다 자동으로 갱신됩니다.</p>
+      <p className="live-detail-muted">자동으로 갱신되며, 라운드 전환 같은 변화는 바로 반영됩니다.</p>
     </div>}
   </dialog>;
 }
@@ -242,7 +242,7 @@ export function LiveBoard({ live, players = [], survival, rules = DEFAULT_RULES,
     {matches ? <div className="live-grid">
       {data.solo.matches.map((match) => <SoloCard match={match} now={now} key={soloKey(match)} onOpen={() => open("solo", match)} />)}
       {data.survival.matches.map((match) => <SurvivalCard match={match} now={now} key={survivalKey(match)} onOpen={() => open("survival", match)} />)}
-    </div> : <p className="live-empty">지금 진행 중인 경기가 없습니다. 10초마다 자동으로 갱신됩니다.</p>}
+    </div> : <p className="live-empty">지금 진행 중인 경기가 없습니다. 새 경기가 시작되면 자동으로 나타납니다.</p>}
     <LiveMatchDialog selection={selection} data={data} now={now} players={players} survivalPlayers={survival?.players || []} rules={rules} playerCount={playerCount} onClose={() => setSelection(null)} />
   </section>;
 }

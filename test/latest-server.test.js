@@ -144,3 +144,18 @@ test("formats season countdowns by remaining size and mode state", async () => {
   assert.equal(sameSeason({ ...config, seasons: { solo: season, survival: { ...season, targetAt: "2026-11-16T00:00:00.000Z" } } }), false);
   assert.equal(sameSeason({ ...config, modes: { solo: { enabled: true }, survival: { enabled: false } } }), false);
 });
+
+test("detects major LIVE changes and the next server deadline", async () => {
+  const { liveSignature, nextLiveTransition, normalizeLive } = await import("../src/ranked-data.js");
+  const now = Date.parse("2026-11-13T10:00:00Z");
+  const solo = { state: "ROUND_PLAYING", round: 1, roundWins: [0, 0], players: [{ name: "A" }, { name: "B" }], roundScore: { scores: [10, 0], clears: [0, 0] }, deadlineAt: "2026-11-13T10:00:40Z", startedAt: "2026-11-13T09:58:00Z" };
+  const board = normalizeLive({ serverNow: "2026-11-13T10:00:00Z", solo: { matches: [solo] }, survival: { matches: [{ state: "PLAYING", phase: "ROUND_1", entrants: 16, alive: 16, startsAt: "2026-11-13T09:59:00Z", endsAt: "2026-11-13T10:02:00Z", startedAt: "2026-11-13T09:57:00Z" }] } });
+  assert.equal(nextLiveTransition(board, now), 40_000);
+  assert.equal(nextLiveTransition(normalizeLive({ solo: { matches: [] }, survival: { matches: [] } }), now), null);
+  const scoreOnly = normalizeLive({ solo: { matches: [{ ...solo, roundScore: { scores: [99, 0], clears: [0, 0] } }] }, survival: { matches: [] } });
+  const nextRound = normalizeLive({ solo: { matches: [{ ...solo, round: 2, roundWins: [1, 0] }] }, survival: { matches: [] } });
+  const base = normalizeLive({ solo: { matches: [solo] }, survival: { matches: [] } });
+  assert.equal(liveSignature(scoreOnly), liveSignature(base), "a score change alone is not a major change");
+  assert.notEqual(liveSignature(nextRound), liveSignature(base));
+  assert.equal(typeof board.serverOffsetMs, "number");
+});

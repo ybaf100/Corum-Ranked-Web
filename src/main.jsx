@@ -4,7 +4,7 @@ import "./styles.css";
 import "./pages.css";
 import "./interaction.css";
 import { useStickyOffsets } from "./motion.jsx";
-import { csvObjects, fetchJson, fetchText, loadRankedMaps, loadTierGuide, normalizeLeaderboard, normalizeLive, normalizeRankedConfig, sameSeason, seasonCountdown } from "./ranked-data.js";
+import { csvObjects, fetchJson, fetchText, loadRankedMaps, loadTierGuide, normalizeLeaderboard, liveSignature, nextLiveTransition, normalizeLive, normalizeRankedConfig, sameSeason, seasonCountdown } from "./ranked-data.js";
 import { MapList } from "./maps.jsx";
 import { Ranking } from "./ranking.jsx";
 import { Information, PlacementInformation } from "./info.jsx";
@@ -90,17 +90,44 @@ function useSurvivalLeaderboard() {
   }, [players.length, remote.data]);
   return { ...remote, loading: !active || remote.loading, players, hasMore, loadingMore: extra.loadingMore, loadMore, activate: () => setActive(true) };
 }
-/** Polls the public LIVE board every 10 s while the standings tab is open and the page is visible. */
+// The server caches /live for 5 s, so polling faster only returns the same snapshot.
+const LIVE_POLL_MS = 5_000;
+const LIVE_DEADLINE_GRACE_MS = 700;   // let the server settle the phase that just ended
+const LIVE_FOLLOW_UP_MS = 1_500;      // one quick re-read after a major change catches chained transitions
+/**
+ * Reads the public LIVE board while the standings tab is open and visible: every 5 s, right after
+ * each server deadline (round or phase end), and once more shortly after any major change.
+ */
 function useLive(active) {
   const [visible, setVisible] = useState(() => document.visibilityState !== "hidden");
   useEffect(() => { const update = () => setVisible(document.visibilityState !== "hidden"); document.addEventListener("visibilitychange", update); return () => document.removeEventListener("visibilitychange", update); }, []);
   const remote = useRemoteData(async (signal) => normalizeLive(await fetchJson(`${API}/live`, signal, 10_000)), active && visible);
-  const { reload } = remote;
+  const { reload, data } = remote;
+  const running = active && visible;
   useEffect(() => {
-    if (!active || !visible) return undefined;
-    const timer = setInterval(reload, 10_000);
+    if (!running) return undefined;
+    const timer = setInterval(reload, LIVE_POLL_MS);
     return () => clearInterval(timer);
-  }, [active, visible]);
+  }, [running]);
+  // Refresh at the moment a round or phase is due to change, on the server clock.
+  useEffect(() => {
+    if (!running || !data) return undefined;
+    const delay = nextLiveTransition(data, Date.now() + data.serverOffsetMs);
+    if (delay === null || delay > 10 * 60_000) return undefined;
+    const timer = setTimeout(reload, delay + LIVE_DEADLINE_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, [running, data]);
+  // After a major change, look again soon: settling, results and the next round follow quickly.
+  const signature = liveSignature(data);
+  const previous = useRef(signature);
+  useEffect(() => {
+    if (!data || signature === previous.current) return undefined;
+    const first = previous.current === "";
+    previous.current = signature;
+    if (first || !running) return undefined;
+    const timer = setTimeout(reload, LIVE_FOLLOW_UP_MS);
+    return () => clearTimeout(timer);
+  }, [signature, running]);
   // A failed poll keeps the last board instead of blanking it; a server without the API never shows one.
   const last = useRef(null);
   if (remote.data) last.current = remote.data;
