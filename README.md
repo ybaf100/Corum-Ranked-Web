@@ -1,6 +1,26 @@
-# Corum Ranked Official Site v1.5.1
+# Corum Ranked Official Site v2.0.0
 
-Corum Ranked의 맵 풀, 공개 플레이어 순위와 운영 규칙을 보여주는 공식 사이트입니다.
+Corum Ranked의 맵 풀, Solo·Survival 공개 순위와 최신 운영 규칙을 보여주는 공식 사이트입니다.
+
+## v2.0.0 Night Arena 디자인 · 최신 서버 정보
+
+- 블랙(라이트 모드는 쿨 화이트)과 라임, 기울어진 컨덴스드 서체의 e스포츠 중계형 디자인으로 전면 교체했습니다.
+  겹쳐 쓰던 5개 스타일시트를 `styles.css`(공통·맵·순위), `pages.css`(정보·Survival·배치),
+  `interaction.css`(맵 코드 복사·진행 단계), `rule-demos.css`(진행 예시)로 정리했습니다.
+- 기능은 그대로 유지합니다: 상단 3개 메뉴와 `#placement`, 서버 상태, 라이트/다크 테마, 비활성 모드 버튼,
+  맵 검색·Pool 필터·맵 코드 복사, 순위 검색·승급전·강등 경고·배치 진행, 진행 예시 애니메이션과 다시 보기,
+  스크롤 등장 효과, 키보드 포커스, 모션 줄이기, 작은 화면.
+- 기본 API를 Cloudflare를 거치는 `https://api.hwanhee1.com`으로 바꿨습니다. 빌드 변수가 은퇴한
+  Render/Railway 주소를 가리켜도 새 주소를 사용합니다.
+- 최신 서버(v0.6.0-beta.57) 규칙을 반영했습니다.
+  - Solo 티어: RED·AQUA·BRONZE·SILVER의 III/II/I 디비전, GOLD 안의 CHAMPION·MASTER 칭호, 봇 표시, 장착 칭호.
+  - 티어별 매치 형식(단판/BO3)과 맵 밴, 밴 후보 수(단판 4개 / BO3 5개), I 단계 승급전, III 단계 강등 보호를
+    공개 `GET /api/ranked/leaderboard/tiers`에서 실시간으로 읽습니다. 실패하면 Ranked Tiers 시트(13행·구 5행 모두)로 대체합니다.
+  - 라운드 시간·Clear 목표·마지막 시작/LAST ATTEMPT·밴 시간, 모드별 열림 상태와 시즌을 `GET /api/ranked/config`에서 읽습니다.
+  - 순위 탭에 Survival 순위(`GET /api/ranked/survival/leaderboard`, 50명씩 더 보기)를 추가했습니다.
+  - 정보 탭에 Survival 장(16/64인 라운드별 통과 목표, 결승 Death Match, 순위별 LP, 티어)을 추가했습니다.
+  - 배치 건너뛰기 150 LP와 3 Stage 상한을 실시간 티어 구간으로 표시합니다.
+- 검증: 데이터 테스트 30개, Vite 프로덕션 빌드, 데스크톱·휴대폰 × 라이트·다크 화면 점검, 진행 예시 재생·키보드 탭 이동·복사 동작 확인.
 
 ## v1.5.1 맵 난이도 표시·정렬
 
@@ -70,7 +90,7 @@ npm run dev
 
 ## Ranked 서버 연결
 
-기본 서버는 `https://corum-ranked.onrender.com`입니다. 다른 서버를 사용하면 저장소의
+기본 서버는 `https://api.hwanhee1.com`입니다(Render·Railway 주소는 은퇴). 다른 서버를 사용하면 저장소의
 GitHub Actions Variable에 아래 값을 설정합니다.
 
 ```text
@@ -79,7 +99,8 @@ VITE_RANKED_API_URL=https://your-ranked-server.example
 
 로컬에서는 `.env`에 같은 값을 넣으면 됩니다.
 
-순위 탭과 상단 서버 상태는 공개 읽기 전용 `GET /api/ranked/leaderboard`를 사용합니다. 매칭 활성화 여부와 공개 DB 조회 가능 여부는 서로 독립적입니다. 함께 제공된 서버
+순위 탭, 상단 서버 상태와 정보 탭은 공개 읽기 전용 `GET /api/ranked/config`, `/leaderboard`,
+`/leaderboard/tiers`, `/survival/leaderboard`, `/maps`를 사용합니다. 매칭 활성화 여부와 공개 DB 조회 가능 여부는 서로 독립적입니다. 함께 제공된 서버
 패치를 Corum-Ranked 서버에 반영하고, 서버의 `CORS_ORIGINS`에 GitHub Pages origin인
 `https://ybaf100.github.io`를 등록해야 합니다. DB 접속 문자열을 프런트엔드에 넣지 마세요.
 

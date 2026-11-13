@@ -2,9 +2,7 @@ import React, { useLayoutEffect, useRef, useState } from "react";
 import { Reveal } from "./motion.jsx";
 import { Bo3Demo, DeathMatchDemo } from "./rule-demos.jsx";
 
-const STEP_NOTES = ["10초 밴", "항상 Round 2로", "승수 다르면 종료", "Round 2 동률 시", "Round 3 무승부 시"];
-
-export function MatchJourney({ phases }) {
+export function MatchJourney({ phases, formatLabel = "BO3", caption = "Round 1 → Round 2 → Round 3", captionNote = "Round 2 동률 시 Round 3" }) {
   const [selected, setSelected] = useState(0);
   const [reveal, setReveal] = useState("static");
   const rail = useRef(null);
@@ -45,15 +43,15 @@ export function MatchJourney({ phases }) {
     <div className="journey-stage">
     <div className="journey-heading">
       <div><p className="section-kicker">01 / HOW RANKED WORKS</p><h2 id="match-format-title">진행 방식</h2></div>
-      <div className="journey-format" aria-label="Best of 3"><span>Best of</span><strong>3<span>.</span></strong></div>
+      <div className="journey-format"><span>FORMAT</span><strong>{formatLabel}</strong></div>
     </div>
-    <div className="journey-caption"><p>Round 1 → Round 2 → Round 3</p><span>Round 2 동률 시 Round 3</span></div>
+    <div className="journey-caption"><p>{caption}</p><span>{captionNote}</span></div>
     <div className="journey-rail" ref={rail} role="tablist" aria-label="Ranked 경기 진행 단계" aria-orientation="horizontal">
-      {phases.map((phase, index) => <div className={`journey-step${index >= 3 ? " is-conditional" : ""}`} key={phase.step} style={{ "--step-delay":`${index * 90}ms` }} role="presentation">
+      {phases.map((phase, index) => <div className={`journey-step${phase.conditional ? " is-conditional" : ""}`} key={phase.step} style={{ "--step-delay":`${index * 90}ms` }} role="presentation">
         <button type="button" ref={element => { buttons.current[index] = element; }} id={`match-step-${index}`} role="tab" aria-selected={selected === index} aria-controls={`match-panel-${index}`} tabIndex={selected === index ? 0 : -1} onClick={() => choose(index)} onKeyDown={event => onKeyDown(event, index)}>
           <span className="journey-step-top"><span>{phase.step}</span><span>{phase.eyebrow}</span></span>
           <strong>{phase.title}</strong>
-          <span className="journey-step-note">{STEP_NOTES[index]}</span>
+          <span className="journey-step-note">{phase.note}</span>
         </button>
         {index < phases.length - 1 && <svg className="journey-arrow" viewBox="0 0 32 20" aria-hidden="true"><path pathLength="1" d="M2 10h26m-6-5 6 5-6 5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
       </div>)}
